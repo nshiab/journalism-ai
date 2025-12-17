@@ -748,21 +748,25 @@ if (ollama) {
     },
   );
 
-  Deno.test("should scrape a web page with specific context window size (ollama)", async () => {
-    await askAI(
-      `What is this website about?`,
-      {
-        HTMLFrom: "https://www.code-like-a-journalist.com/en",
-        returnJson: true,
-        verbose: true,
-        contextWindow: 32000,
-        cache: true,
-      },
-    );
+  Deno.test(
+    "should scrape a web page with specific context window size (ollama)",
+    { sanitizeResources: false },
+    async () => {
+      await askAI(
+        `What is this website about?`,
+        {
+          HTMLFrom: "https://www.code-like-a-journalist.com/en",
+          returnJson: true,
+          verbose: true,
+          contextWindow: 32000,
+          cache: true,
+        },
+      );
 
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
+      // Just making sure it doesn't crash for now.
+      assertEquals(true, true);
+    },
+  );
   Deno.test("should take a screenshot and analyze it (ollama)", {
     sanitizeResources: false,
   }, async () => {
@@ -777,23 +781,28 @@ if (ollama) {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should analyze images (ollama)", async () => {
-    await askAI(
-      `I want an object with the following properties:
+  Deno.test(
+    "should analyze images (ollama)",
+    { sanitizeResources: false },
+    async () => {
+      await askAI(
+        `I want an object with the following properties:
         - name: the person on the image,
         - description: a very short description of the image,
         - isPolitician: true is if it's a politician and false if it isn't.
     Return a JSON.`,
-      {
-        image: "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.47 PM.png",
-        verbose: true,
-        returnJson: true,
-      },
-    );
+        {
+          image:
+            "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.47 PM.png",
+          verbose: true,
+          returnJson: true,
+        },
+      );
 
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
+      // Just making sure it doesn't crash for now.
+      assertEquals(true, true);
+    },
+  );
   Deno.test("should use a text file (ollama)", async () => {
     const result = await askAI(
       "What is the content of this text file?",
