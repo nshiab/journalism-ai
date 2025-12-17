@@ -1,0 +1,45 @@
+{
+  "name": "@nshiab/journalism-ai",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "tasks": {
+    "all-tests": "deno install --allow-scripts=npm:playwright-chromium && deno fmt --check && deno lint && deno check src/index.ts && deno doc --lint src/index.ts && deno publish --allow-dirty --dry-run && TZ=America/Toronto deno test -A --fail-fast && deno task llm",
+    "llm": "deno doc --json src/index.ts > docs.json && deno run -A src/generateLlmMd.ts && deno fmt llm.md",
+    "test-coverage": "deno test -A --fail-fast --coverage=cov_profile && deno coverage cov_profile",
+    "patch-no-tests": "deno run -A src/incrementVersion.ts patch",
+    "minor-no-tests": "deno run -A src/incrementVersion.ts minor",
+    "patch": "deno task all-tests && deno run -A src/incrementVersion.ts patch",
+    "minor": "deno task all-tests && deno run -A src/incrementVersion.ts minor",
+    "major": "deno task all-tests && deno run -A src/incrementVersion.ts major"
+  },
+  "publish": {
+    "exclude": [
+      "test",
+      ".github"
+    ]
+  },
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@google/genai": "npm:@google/genai@^1.34.0",
+    "@nshiab/journalism-format": "jsr:@nshiab/journalism-format@^1.0.2",
+    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.0",
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.5",
+    "jsonrepair": "npm:jsonrepair@^3.13.1",
+    "ollama": "npm:ollama@^0.6.3",
+    "playwright-chromium": "npm:playwright-chromium@^1.57.0"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "deno.ns"
+    ]
+  },
+  "lint": {
+    "include": [
+      "src/**/*.ts"
+    ]
+  },
+  "allowScripts": ["npm:playwright-chromium@1"]
+}
