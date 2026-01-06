@@ -53,6 +53,16 @@ if (typeof aiKey === "string" && aiKey !== "") {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
+  Deno.test("should use a simple prompt with a detailed response", async () => {
+    const result = await askAI("What is the capital of France?", {
+      verbose: true,
+      detailedResponse: true,
+    });
+    console.log(result);
+
+    // Just making sure it doesn't crash for now.
+    assertEquals(true, true);
+  });
   Deno.test("should process multiple prompts with metrics option whith verbose false", async () => {
     const metrics = {
       totalCost: 0,
@@ -132,12 +142,45 @@ if (typeof aiKey === "string" && aiKey !== "") {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with thinking", async () => {
-    const result = await askAI("What is the capital of France?", {
-      thinkingBudget: 500,
-      verbose: true,
-      model: "gemini-2.5-flash",
-    });
+  Deno.test("should use a simple prompt with thinking (5000)", async () => {
+    const result = await askAI(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
+      {
+        thinkingBudget: 5000,
+        verbose: true,
+        model: "gemini-2.5-flash",
+      },
+    );
+    console.log(result);
+
+    // Just making sure it doesn't crash for now.
+    assertEquals(true, true);
+  });
+  Deno.test("should use a simple prompt with dynamic thinking (-1) and detailed response and cache", async () => {
+    const result = await askAI(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
+      {
+        thinkingBudget: -1,
+        model: "gemini-2.5-flash",
+        cache: true,
+        detailedResponse: true,
+      },
+    );
+    console.log(result);
+
+    // Just making sure it doesn't crash for now.
+    assertEquals(true, true);
+  });
+  Deno.test("should use a simple prompt and return cached response", async () => {
+    const result = await askAI(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
+      {
+        thinkingBudget: -1,
+        model: "gemini-2.5-flash",
+        cache: true,
+        detailedResponse: true,
+      },
+    );
     console.log(result);
 
     // Just making sure it doesn't crash for now.

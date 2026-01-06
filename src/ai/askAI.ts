@@ -3,12 +3,13 @@ import process from "node:process";
 import {
   type Candidate,
   type ContentListUnion,
+  type GenerateContentParameters,
   GenerateContentResponse,
   GoogleGenAI,
 } from "@google/genai";
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
-import ollama, { Ollama } from "ollama";
+import ollama, { type ChatRequest, Ollama } from "ollama";
 import { chromium } from "playwright-chromium";
 import { jsonrepair } from "jsonrepair";
 
@@ -207,6 +208,24 @@ import { jsonrepair } from "jsonrepair";
  * console.log("Total output tokens:", metrics.totalOutputTokens);
  * console.log("Total requests:", metrics.totalRequests);
  * ```
+ * @example
+ * ```ts
+ * // Get detailed metadata including tokens, cost, and duration.
+ * const result = await askAI("What is the capital of France?", {
+ *   detailedResponse: true
+ * });
+ *
+ * console.log("Response:", result.response);
+ * console.log("Model:", result.model);
+ * // Result includes: response, prompt, promptTokenCount, outputTokenCount, totalTokens,
+ * // tokensPerSecond, estimatedCost (for Google models), durationMs, model, thoughts, and more
+ *
+ * // Access specific fields
+ * console.log(`Used ${result.totalTokens} tokens in ${result.durationMs}ms`);
+ * if (result.estimatedCost) {
+ *   console.log(`Estimated cost: $${result.estimatedCost}`);
+ * }
+ * ```
  * @param prompt - The primary text input for the AI model.
  * @param options - A comprehensive set of options.
  *   @param options.model - The specific AI model to use (e.g., 'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
@@ -231,11 +250,15 @@ import { jsonrepair } from "jsonrepair";
  *   @param options.contextWindow - An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
  *   @param options.thinkingBudget - Sets the reasoning token budget: 0 to disable (default, though some models may reason regardless), -1 for a dynamic budget, or > 0 for a fixed budget. For Ollama models, any non-zero value simply enables reasoning, ignoring the specific budget amount.
  *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget. Defaults to `false`.
+ *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
+ *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
+ *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
  *   @param options.metrics - An object to track cumulative metrics across multiple AI requests. Pass an object with `totalCost`, `totalInputTokens`, `totalOutputTokens`, and `totalRequests` properties (all initialized to 0). The function will update these values after each request. Note: `totalCost` is only calculated for Google GenAI models, not for Ollama.
  * @return {Promise<unknown>} A Promise that resolves to the AI's response.
  *
  * @category AI
  */
+
 export default async function askAI(
   prompt: string,
   options: {
@@ -261,6 +284,344 @@ export default async function askAI(
     contextWindow?: number;
     thinkingBudget?: number;
     includeThoughts?: boolean;
+    detailedResponse: true;
+    geminiParameters?: Partial<GenerateContentParameters>;
+    ollamaParameters?: Partial<ChatRequest>;
+    metrics?: {
+      totalCost: number;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+      totalRequests: number;
+    };
+  },
+): Promise<{
+  response: unknown;
+  rawResponse: unknown;
+  fromCache: boolean;
+  prompt: string;
+  promptTokenCount: number;
+  outputTokenCount: number;
+  totalTokens: number;
+  tokensPerSecond: number;
+  estimatedCost?: number;
+  durationMs: number;
+  model: string;
+  thoughts: string;
+  thoughtsTokenCount: number;
+}>;
+
+/**
+ * Interacts with a Large Language Model (LLM) to perform a wide range of tasks, from answering questions to analyzing multimedia content. This function serves as a versatile interface to various AI models, including Google's Gemini and local models via Ollama.
+ *
+ * The function is designed to be highly configurable, allowing you to specify the AI model, credentials, and various input types such as text, images, audio, video, and even web pages. It also includes features for caching responses to improve performance and reduce costs, as well as for testing and cleaning the AI's output.
+ *
+ * **Authentication**:
+ * The function can be authenticated using environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`, `AI_MODEL`) or by passing credentials directly in the `options` object. Options will always take precedence over environment variables.
+ *
+ * **Local Models**:
+ * To use a local model with Ollama, set the `OLLAMA` environment variable to `true` and ensure that Ollama is running on your machine. You will also need to specify the model name using the `AI_MODEL` environment variable or the `model` option. If you want your Ollama instance to be used, you can pass an instance of the `Ollama` class as the `ollama` option.
+ *
+ * **Caching**:
+ * Caching is a powerful feature that saves the AI's response to a local directory (`.journalism-cache`). When the same request is made again, the cached response is returned instantly, saving time and API costs. To enable caching, set the `cache` option to `true`.
+ *
+ * **File Handling**:
+ * The function can process both local files and files stored in Google Cloud Storage (GCS). Simply provide the file path or the `gs://` URL. Note that Ollama only supports local files.
+ *
+ * @example
+ * ```ts
+ * // Basic usage: Get a simple text response from the AI.
+ * // Assumes credentials are set in environment variables.
+ * const capital = await askAI("What is the capital of France?");
+ * console.log(capital); // "Paris"
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Enable caching to save the response and avoid repeated API calls.
+ * // A .journalism-cache directory will be created.
+ * const cachedCapital = await askAI("What is the capital of France?", { cache: true });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Pass API credentials directly as options.
+ * const response = await askAI("What is the capital of France?", {
+ *   apiKey: "your_api_key",
+ *   model: "gemini-1.5-flash",
+ * });
+ *
+ * // Use Vertex AI for authentication.
+ * const vertexResponse = await askAI("What is the capital of France?", {
+ *   vertex: true,
+ *   project: "your_project_id",
+ *   location: "us-central1",
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Scrape and analyze HTML content from a URL.
+ * const orders = await askAI(
+ *   `From the following HTML, extract the executive order titles, their dates (in yyyy-mm-dd format), and their URLs. Return the data as a JSON array of objects.`,
+ *   {
+ *     HTMLFrom: "https://www.whitehouse.gov/presidential-actions/executive-orders/",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.table(orders);
+ *
+ * // Analyze a screenshot of a webpage.
+ * const specials = await askAI(
+ *   `Based on this screenshot of a grocery store flyer, list the products that are on special.`,
+ *   {
+ *     screenshotFrom: "https://www.metro.ca/circulaire",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.table(specials);
+ * ```
+ * @example
+ * ```ts
+ * // Analyze a local image file.
+ * const personInfo = await askAI(
+ *   `Analyze the provided image and return a JSON object with the following details:
+ *   - name: The name of the person if they are a recognizable public figure.
+ *   - description: A brief description of the image.
+ *   - isPolitician: A boolean indicating if the person is a politician.`,
+ *   {
+ *     image: "./path/to/your_image.jpg",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.log(personInfo);
+ *
+ * // Analyze an image from Google Cloud Storage.
+ * const gcsImageInfo = await askAI(
+ *   `Describe the scene in this image.`,
+ *   {
+ *     image: "gs://your-bucket/your_image.jpg",
+ *   },
+ * );
+ * console.log(gcsImageInfo);
+ *
+ * // Transcribe an audio file.
+ * const speechDetails = await askAI(
+ *   `Transcribe the speech in this audio file. If possible, identify the speaker and the approximate date of the speech.`,
+ *   {
+ *     audio: "./path/to/speech.mp3",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.log(speechDetails);
+ *
+ * // Analyze a video file.
+ * const videoAnalysis = await askAI(
+ *   `Create a timeline of events from this video. For each event, provide a timestamp, a short description, and identify the main people involved.`,
+ *   {
+ *     video: "./path/to/your_video.mp4",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.table(videoAnalysis);
+ * ```
+ * @example
+ * ```ts
+ * // Extract structured data from a PDF document.
+ * const caseSummary = await askAI(
+ *   `This is a Supreme Court decision. Provide a list of objects with a date and a brief summary for each important event of the case's merits, sorted chronologically.`,
+ *   {
+ *     pdf: "./path/to/decision.pdf",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.table(caseSummary);
+ *
+ * // Summarize a local text file.
+ * const summary = await askAI(
+ *   `Analyze the content of this CSV file and provide a summary of its key findings.`,
+ *   {
+ *     text: "./path/to/data.csv",
+ *   },
+ * );
+ * console.log(summary);
+ * ```
+ * @example
+ * ```ts
+ * // Process multiple files of different types in a single call.
+ * const multiFileSummary = await askAI(
+ *   `Provide a brief summary for each file I've provided.`,
+ *   {
+ *     HTMLFrom: "https://www.un.org/en/global-issues",
+ *     audio: "path/to/speech.mp3",
+ *     image: "path/to/protest.jpg",
+ *     video: "path/to/event.mp4",
+ *     pdf: "path/to/report.pdf",
+ *     text: "path/to/notes.txt",
+ *     returnJson: true,
+ *   },
+ * );
+ * console.log(multiFileSummary);
+ *
+ * // Use a clean and test function to process and validate the AI's output.
+ * const europeanCountries = await askAI(
+ *   `Give me a list of three countries in Northern Europe.`,
+ *   {
+ *     returnJson: true,
+ *     clean: (response: unknown) => {
+ *       // Example: Trim whitespace from each country name in the array
+ *       if (Array.isArray(response)) {
+ *         return response.map(item => typeof item === 'string' ? item.trim() : item);
+ *       }
+ *       return response;
+ *     },
+ *     test: (response) => {
+ *       if (!Array.isArray(response)) {
+ *         throw new Error("Response is not an array.");
+ *       }
+ *       if (response.length !== 3) {
+ *         throw new Error("Response does not contain exactly three items.");
+ *       }
+ *       console.log("Test passed: The response is a valid list of three countries.");
+ *     },
+ *   },
+ * );
+ * console.log(europeanCountries);
+ * ```
+ * @example
+ * ```ts
+ * // Track cumulative metrics across multiple AI requests.
+ * const metrics = {
+ *   totalCost: 0,
+ *   totalInputTokens: 0,
+ *   totalOutputTokens: 0,
+ *   totalRequests: 0,
+ * };
+ *
+ * await askAI("What is the capital of France?", { metrics });
+ * await askAI("What is the population of Paris?", { metrics });
+ *
+ * console.log("Total cost:", metrics.totalCost);
+ * console.log("Total input tokens:", metrics.totalInputTokens);
+ * console.log("Total output tokens:", metrics.totalOutputTokens);
+ * console.log("Total requests:", metrics.totalRequests);
+ * ```
+ * @example
+ * ```ts
+ * // Get detailed metadata including tokens, cost, and duration.
+ * const result = await askAI("What is the capital of France?", {
+ *   detailedResponse: true
+ * });
+ *
+ * console.log("Response:", result.response);
+ * console.log("Model:", result.model);
+ * // Result includes: response, prompt, promptTokenCount, outputTokenCount, totalTokens,
+ * // tokensPerSecond, estimatedCost (for Google models), durationMs, model, thoughts, and more
+ *
+ * // Access specific fields
+ * console.log(`Used ${result.totalTokens} tokens in ${result.durationMs}ms`);
+ * if (result.estimatedCost) {
+ *   console.log(`Estimated cost: $${result.estimatedCost}`);
+ * }
+ * ```
+ * @param prompt - The primary text input for the AI model.
+ * @param options - A comprehensive set of options.
+ *   @param options.model - The specific AI model to use (e.g., 'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
+ *   @param options.apiKey - Your API key for the AI service. Defaults to the `AI_KEY` environment variable.
+ *   @param options.vertex - Set to `true` to use Vertex AI for authentication. Auto-enables if `AI_PROJECT` and `AI_LOCATION` are set.
+ *   @param options.project - Your Google Cloud project ID. Defaults to the `AI_PROJECT` environment variable.
+ *   @param options.location - The Google Cloud location for your project. Defaults to the `AI_LOCATION` environment variable.
+ *   @param options.ollama - Set to `true` to use a local Ollama model. Defaults to the `OLLAMA` environment variable. If you want your Ollama instance to be used, you can pass it here too.
+ *   @param options.HTMLFrom - A URL or an array of URLs to scrape HTML content from. The content is appended to the prompt.
+ *   @param options.screenshotFrom - A URL or an array of URLs to take a screenshot from for analysis.
+ *   @param options.image - A path or GCS URL (or an array of them) to an image file.
+ *   @param options.video - A path or GCS URL (or an array of them) to a video file.
+ *   @param options.audio - A path or GCS URL (or an array of them) to an audio file.
+ *   @param options.pdf - A path or GCS URL (or an array of them) to a PDF file.
+ *   @param options.text - A path or GCS URL (or an array of them) to a text file.
+ *   @param options.returnJson - If `true`, instructs the AI to return a JSON object. Defaults to `false`.
+ *   @param options.parseJson - If `true`, automatically parses the AI's response as JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
+ *   @param options.cache - If `true`, caches the response locally in a `.journalism-cache` directory. Defaults to `false`.
+ *   @param options.verbose - If `true`, enables detailed logging, including token usage and estimated costs. Defaults to `false`.
+ *   @param options.clean - A function to process and clean the AI's response before it is returned or tested. This function is called after JSON parsing (if `parseJson` is `true`). The response parameter will be the parsed JSON object if `parseJson` is true, or a string otherwise.
+ *   @param options.test - A function or an array of functions to validate the AI's response before it's returned.
+ *   @param options.contextWindow - An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
+ *   @param options.thinkingBudget - Sets the reasoning token budget: 0 to disable (default, though some models may reason regardless), -1 for a dynamic budget, or > 0 for a fixed budget. For Ollama models, any non-zero value simply enables reasoning, ignoring the specific budget amount.
+ *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget. Defaults to `false`.
+ *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
+ *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
+ *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
+ *   @param options.metrics - An object to track cumulative metrics across multiple AI requests. Pass an object with `totalCost`, `totalInputTokens`, `totalOutputTokens`, and `totalRequests` properties (all initialized to 0). The function will update these values after each request. Note: `totalCost` is only calculated for Google GenAI models, not for Ollama.
+ * @return {Promise<unknown>} A Promise that resolves to the AI's response.
+ *
+ * @category AI
+ */
+
+export default async function askAI(
+  prompt: string,
+  options?: {
+    model?: string;
+    apiKey?: string;
+    vertex?: boolean;
+    project?: string;
+    location?: string;
+    ollama?: boolean | Ollama;
+    HTMLFrom?: string | string[];
+    screenshotFrom?: string | string[];
+    image?: string | string[];
+    video?: string | string[];
+    audio?: string | string[];
+    pdf?: string | string[];
+    text?: string | string[];
+    returnJson?: boolean;
+    parseJson?: boolean;
+    verbose?: boolean;
+    cache?: boolean;
+    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
+    clean?: (response: unknown) => unknown;
+    contextWindow?: number;
+    thinkingBudget?: number;
+    includeThoughts?: boolean;
+    detailedResponse?: false;
+    geminiParameters?: Partial<GenerateContentParameters>;
+    ollamaParameters?: Partial<ChatRequest>;
+    metrics?: {
+      totalCost: number;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+      totalRequests: number;
+    };
+  },
+): Promise<unknown>;
+
+// Implementation
+export default async function askAI(
+  prompt: string,
+  options: {
+    model?: string;
+    apiKey?: string;
+    vertex?: boolean;
+    project?: string;
+    location?: string;
+    ollama?: boolean | Ollama;
+    HTMLFrom?: string | string[];
+    screenshotFrom?: string | string[];
+    image?: string | string[];
+    video?: string | string[];
+    audio?: string | string[];
+    pdf?: string | string[];
+    text?: string | string[];
+    returnJson?: boolean;
+    parseJson?: boolean;
+    verbose?: boolean;
+    cache?: boolean;
+    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
+    clean?: (response: unknown) => unknown;
+    contextWindow?: number;
+    thinkingBudget?: number;
+    includeThoughts?: boolean;
+    detailedResponse?: boolean;
+    geminiParameters?: Partial<GenerateContentParameters>;
+    ollamaParameters?: Partial<ChatRequest>;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
@@ -275,6 +636,36 @@ export default async function askAI(
     options.ollama instanceof Ollama || process.env.OLLAMA;
   const defaults = { parseJson: options.returnJson ?? false };
   options = { ...defaults, ...options };
+
+  // Initialize detailed response tracking
+  const detailedResponse: {
+    response: unknown;
+    rawResponse: unknown;
+    fromCache: boolean;
+    prompt: string;
+    promptTokenCount: number;
+    outputTokenCount: number;
+    totalTokens: number;
+    tokensPerSecond: number;
+    estimatedCost?: number;
+    durationMs: number;
+    model: string;
+    thoughts: string;
+    thoughtsTokenCount: number;
+  } = {
+    response: undefined,
+    prompt: prompt,
+    rawResponse: undefined,
+    fromCache: false,
+    model: "",
+    promptTokenCount: 0,
+    outputTokenCount: 0,
+    totalTokens: 0,
+    tokensPerSecond: 0,
+    durationMs: 0,
+    thoughts: "",
+    thoughtsTokenCount: 0,
+  };
 
   if (ollamaVar) {
     client = options.ollama instanceof Ollama ? options.ollama : ollama;
@@ -311,6 +702,8 @@ export default async function askAI(
       "Model not specified. Use the AI_MODEL environment variable or pass it as an option.",
     );
   }
+
+  detailedResponse.model = model;
 
   if (options.verbose) {
     console.log(`\nPrompt to ${model}:`);
@@ -557,6 +950,9 @@ export default async function askAI(
     }
   }
 
+  // Update the prompt in detailedResponse to reflect what was actually sent
+  detailedResponse.prompt = promptToBeSent;
+
   // Just everything here
   const params = {
     model,
@@ -570,9 +966,10 @@ export default async function askAI(
       thinkingConfig: typeof options.thinkingBudget === "number"
         ? {
           thinkingBudget: options.thinkingBudget ?? 0,
-          // we could do a check here if thinkingBudget === 0 -> force false, but
-          // let's trust the user options .. what could go wrong?
-          includeThoughts: options.includeThoughts ?? false,
+          includeThoughts:
+            options.includeThoughts ?? options.thinkingBudget === 0
+              ? false
+              : true,
         }
         : {
           thinkingBudget: 0,
@@ -611,6 +1008,20 @@ export default async function askAI(
         console.log("\nResponse:");
         console.log(cachedResponse);
       }
+      if (options.detailedResponse) {
+        return {
+          response: cachedResponse,
+          rawResponse: undefined,
+          fromCache: true,
+          prompt: prompt,
+          model: model,
+          promptTokenCount: 0,
+          outputTokenCount: 0,
+          totalTokens: 0,
+          tokensPerSecond: 0,
+          durationMs: 0,
+        };
+      }
       return cachedResponse;
     } else if (existsSync(cacheFileText)) {
       const cachedResponse = readFileSync(cacheFileText, "utf-8");
@@ -628,6 +1039,20 @@ export default async function askAI(
         console.log("\nResponse:");
         console.log(cachedResponse);
       }
+      if (options.detailedResponse) {
+        return {
+          response: cachedResponse,
+          rawResponse: undefined,
+          fromCache: true,
+          prompt: prompt,
+          model: model,
+          promptTokenCount: 0,
+          outputTokenCount: 0,
+          totalTokens: 0,
+          tokensPerSecond: 0,
+          durationMs: 0,
+        };
+      }
       return cachedResponse;
     } else {
       if (options.verbose) {
@@ -637,7 +1062,10 @@ export default async function askAI(
   }
 
   const response = client instanceof GoogleGenAI
-    ? await client.models.generateContentStream(params)
+    ? await client.models.generateContentStream({
+      ...params,
+      ...(options.geminiParameters ?? {}),
+    })
     : await client.chat({
       model,
       messages: [message],
@@ -647,6 +1075,7 @@ export default async function askAI(
         num_ctx: options.contextWindow,
       },
       think: (options.thinkingBudget ?? 0) > 0,
+      ...(options.ollamaParameters ?? {}),
       stream: true,
     });
 
@@ -655,6 +1084,7 @@ export default async function askAI(
   let finalUsageMetadata: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
   } | null = null;
   let finalOllamaResponse:
     | { prompt_eval_count: number; eval_count: number }
@@ -675,11 +1105,13 @@ export default async function askAI(
           if (!p.text) {
             continue;
           } else if (p.thought) {
-            if (options.verbose) {
-              if (!thoughts) {
+            if (options.verbose || options.detailedResponse) {
+              if (options.verbose && !thoughts) {
                 process.stdout.write("\nThoughts:\n");
               }
-              process.stdout.write(p.text);
+              if (options.verbose) {
+                process.stdout.write(p.text);
+              }
               thoughts += p.text;
             }
           } else {
@@ -697,11 +1129,13 @@ export default async function askAI(
         finalOllamaResponse = chunk; // Keep updating with the latest chunk to get final metadata
 
         if (chunk.message.thinking) {
-          if (options.verbose) {
-            if (!thoughts) {
+          if (options.verbose || options.detailedResponse) {
+            if (options.verbose && !thoughts) {
               process.stdout.write("\nThoughts:\n");
             }
-            process.stdout.write(chunk.message.thinking);
+            if (options.verbose) {
+              process.stdout.write(chunk.message.thinking);
+            }
             thoughts += chunk.message.thinking;
           }
         } else if (
@@ -722,6 +1156,9 @@ export default async function askAI(
     if ("abort" in response && typeof response.abort === "function") {
       response.abort();
     }
+    if (options.verbose) {
+      process.stdout.write("\n");
+    }
   }
 
   if (options.parseJson) {
@@ -737,9 +1174,17 @@ export default async function askAI(
         `Failed to parse response as JSON: ${error}.\nResponse: ${displayResponse}`,
       );
     }
+
+    if (options.verbose) {
+      console.log("\nParsed JSON response:");
+      console.log(returnedResponse);
+    }
   }
 
   let cleanedResponse: unknown = returnedResponse;
+
+  // Store raw response before cleaning
+  detailedResponse.rawResponse = returnedResponse;
 
   if (options.clean) {
     cleanedResponse = options.clean(returnedResponse);
@@ -766,13 +1211,21 @@ export default async function askAI(
   if (options.verbose && options.clean) {
     console.log("\nCleaned response:");
     console.log(cleanedResponse, "\n");
-  } else if (options.verbose && options.parseJson) {
-    console.log("\nParsed JSON response:");
-    console.log(cleanedResponse, "\n");
+  }
+
+  // Store cleaned response
+  detailedResponse.response = cleanedResponse;
+
+  if (detailedResponse.rawResponse === detailedResponse.response) {
+    // If no cleaning was done, avoid duplication
+    detailedResponse.rawResponse = undefined;
   }
 
   // Calculate metrics and token usage
-  if ((options.verbose || options.metrics) && finalUsageMetadata) {
+  if (
+    (options.verbose || options.metrics || options.detailedResponse) &&
+    finalUsageMetadata
+  ) {
     // Google GenAI streaming response
     const hasAudio = options.audio ? true : false;
 
@@ -842,6 +1295,7 @@ export default async function askAI(
     } else {
       const promptTokenCount = finalUsageMetadata.promptTokenCount ?? 0;
       const outputTokenCount = finalUsageMetadata.candidatesTokenCount ?? 0;
+      const thoughtsTokenCount = finalUsageMetadata.thoughtsTokenCount ?? 0;
 
       let inputRate: number;
       let outputRate: number;
@@ -870,22 +1324,48 @@ export default async function askAI(
         outputRate = modelPricing.output;
       } else {
         if (options.verbose) {
-          console.log(
-            `${
-              options.cache ? "" : "\n"
-            }Invalid pricing structure for model ${model}.`,
-          );
+          console.log(`\nInvalid pricing structure for model ${model}.`);
         }
-        return cleanedResponse;
+        // Still populate basic metadata
+        const durationMs = Date.now() - start;
+        const totalTokens = promptTokenCount + outputTokenCount +
+          thoughtsTokenCount;
+        const tokensPerSecond = totalTokens / (durationMs / 1000);
+
+        detailedResponse.promptTokenCount = promptTokenCount;
+        detailedResponse.outputTokenCount = outputTokenCount;
+        detailedResponse.totalTokens = totalTokens;
+        detailedResponse.tokensPerSecond = tokensPerSecond;
+        detailedResponse.durationMs = durationMs;
+        detailedResponse.thoughts = thoughts;
+        detailedResponse.thoughtsTokenCount = thoughtsTokenCount;
+
+        if (options.detailedResponse) {
+          return detailedResponse;
+        } else {
+          return cleanedResponse;
+        }
       }
 
       const promptTokenCost = (promptTokenCount / 1_000_000) * inputRate;
       const outputTokenCost = (outputTokenCount / 1_000_000) * outputRate;
       const estimatedCost = promptTokenCost + outputTokenCost;
 
-      const totalTokens = promptTokenCount + outputTokenCount;
-      const durationSeconds = (Date.now() - start) / 1000;
+      const totalTokens = promptTokenCount + outputTokenCount +
+        thoughtsTokenCount;
+      const durationMs = Date.now() - start;
+      const durationSeconds = durationMs / 1000;
       const tokensPerSecond = totalTokens / durationSeconds;
+
+      // Always populate metadata
+      detailedResponse.promptTokenCount = promptTokenCount;
+      detailedResponse.outputTokenCount = outputTokenCount;
+      detailedResponse.totalTokens = totalTokens;
+      detailedResponse.tokensPerSecond = tokensPerSecond;
+      detailedResponse.estimatedCost = estimatedCost;
+      detailedResponse.durationMs = durationMs;
+      detailedResponse.thoughts = thoughts;
+      detailedResponse.thoughtsTokenCount = thoughtsTokenCount;
 
       if (options.metrics) {
         options.metrics.totalCost += estimatedCost;
@@ -897,16 +1377,18 @@ export default async function askAI(
       if (options.verbose) {
         console.log(
           `\n\nTokens in:`,
-          formatNumber(promptTokenCount),
+          formatNumber(detailedResponse.promptTokenCount),
           "/",
           "Tokens out:",
-          formatNumber(outputTokenCount),
+          formatNumber(detailedResponse.outputTokenCount),
           "/",
           "Tokens per second:",
-          formatNumber(tokensPerSecond, { significantDigits: 1 }),
+          formatNumber(detailedResponse.tokensPerSecond, {
+            significantDigits: 1,
+          }),
           "/",
           `Estimated cost:`,
-          formatNumber(estimatedCost, {
+          formatNumber(detailedResponse.estimatedCost!, {
             prefix: "$",
             significantDigits: 1,
             suffix: " USD",
@@ -914,10 +1396,25 @@ export default async function askAI(
         );
       }
     }
-  } else if ((options.verbose || options.metrics) && finalOllamaResponse) {
+  } else if (
+    (options.verbose || options.metrics || options.detailedResponse) &&
+    finalOllamaResponse
+  ) {
     // Ollama streaming response
     const promptTokenCount = finalOllamaResponse.prompt_eval_count;
     const outputTokenCount = finalOllamaResponse.eval_count;
+    const totalTokens = promptTokenCount + outputTokenCount;
+    const durationMs = Date.now() - start;
+    const durationSeconds = durationMs / 1000;
+    const tokensPerSecond = totalTokens / durationSeconds;
+
+    // Always populate metadata
+    detailedResponse.promptTokenCount = promptTokenCount;
+    detailedResponse.outputTokenCount = outputTokenCount;
+    detailedResponse.totalTokens = totalTokens;
+    detailedResponse.tokensPerSecond = tokensPerSecond;
+    detailedResponse.durationMs = durationMs;
+    detailedResponse.thoughts = thoughts;
 
     if (options.metrics) {
       options.metrics.totalInputTokens += promptTokenCount;
@@ -926,26 +1423,32 @@ export default async function askAI(
     }
 
     if (options.verbose) {
-      const totalTokens = promptTokenCount + outputTokenCount;
-      const durationSeconds = (Date.now() - start) / 1000;
-      const tokensPerSecond = totalTokens / durationSeconds;
-
       console.log(
         `\n\nTokens in:`,
-        formatNumber(promptTokenCount),
+        formatNumber(detailedResponse.promptTokenCount),
         "/",
         "Tokens out:",
-        formatNumber(outputTokenCount),
+        formatNumber(detailedResponse.outputTokenCount),
         "/",
         "Tokens per second:",
-        formatNumber(tokensPerSecond, { significantDigits: 1 }),
+        formatNumber(detailedResponse.tokensPerSecond, {
+          significantDigits: 1,
+        }),
       );
     }
+  } else if (options.detailedResponse) {
+    // No token metadata available, just populate duration
+    detailedResponse.durationMs = Date.now() - start;
+    detailedResponse.thoughts = thoughts;
   }
 
   if (options.verbose) {
     console.log("Execution time:", prettyDuration(start), "\n");
   }
 
-  return cleanedResponse;
+  if (options.detailedResponse) {
+    return detailedResponse;
+  } else {
+    return cleanedResponse;
+  }
 }
