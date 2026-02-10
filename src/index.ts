@@ -1,4 +1,5 @@
 import askAI from "./ai/askAI.ts";
+import askAIPool from "./ai/askAIPool.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
 
-export { askAI, getEmbedding };
+export { askAI, askAIPool, getEmbedding };
