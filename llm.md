@@ -728,8 +728,8 @@ to inputs.
 ```typescript
 async function askAIPool(
   requests: askAIRequest[],
-  poolOptions: {
-    poolSize: number;
+  poolSize: number,
+  poolOptions?: {
     logProgress?: boolean;
     retry?: number;
     retryCheck?: (error: unknown) => Promise<boolean> | boolean;
@@ -757,9 +757,8 @@ async function askAIPool(
 - **`requests[].prompt`**: - The primary text input for the AI model.
 - **`requests[].options`**: - Options passed to {@link askAI} for each
   individual request. See {@link askAI} for the full list of available options.
+- **`poolSize`**: - The number of concurrent workers processing requests.
 - **`poolOptions`**: - Configuration for the pool execution.
-- **`poolOptions.poolSize`**: - The number of concurrent workers processing
-  requests.
 - **`poolOptions.logProgress`**: - If `true`, logs progress to the console after
   each completed or failed request. Defaults to `false`.
 - **`poolOptions.retry`**: - The maximum number of retry attempts for a failed
@@ -790,7 +789,7 @@ const { results, errors } = await askAIPool(
     { prompt: "What is the capital of Germany?" },
     { prompt: "What is the capital of Italy?" },
   ],
-  { poolSize: 5 },
+  5,
 );
 for (const r of results) {
   console.log(r.result);
@@ -804,7 +803,7 @@ const { results, errors } = await askAIPool(
     { id: "france", prompt: "What is the capital of France?" },
     { id: "germany", prompt: "What is the capital of Germany?" },
   ],
-  { poolSize: 2 },
+  2,
 );
 for (const r of results) {
   console.log(r.request.id, r.result);
@@ -824,8 +823,8 @@ const { results, errors } = await askAIPool(
       options: { text: "./article2.txt", returnJson: true },
     },
   ],
+  3,
   {
-    poolSize: 3,
     logProgress: true,
     retry: 2,
   },
@@ -846,8 +845,8 @@ const { results } = await askAIPool(
     { prompt: "What is 2+2?" },
     { prompt: "What is 3+3?" },
   ],
+  2,
   {
-    poolSize: 2,
     minRequestDurationMs: 1000,
     metrics,
   },
@@ -865,8 +864,8 @@ const { results, errors } = await askAIPool(
       options: { image: "./photo.jpg", returnJson: true },
     },
   ],
+  1,
   {
-    poolSize: 1,
     retry: 3,
     retryCheck: (error) => {
       // Only retry on rate limit errors
