@@ -4,7 +4,7 @@ import askAI from "./askAI.ts";
 import sleep from "./helpers/sleep.ts";
 import { formatNumber } from "@nshiab/journalism-format";
 
-type RequestItem = {
+export type askAIRequest = {
   id?: string;
   prompt: string;
   options?: {
@@ -148,36 +148,7 @@ type RequestItem = {
  * @category AI
  */
 export default async function askAIPool(
-  requests: {
-    id?: string;
-    prompt: string;
-    options?: {
-      model?: string;
-      apiKey?: string;
-      vertex?: boolean;
-      project?: string;
-      location?: string;
-      ollama?: boolean | Ollama;
-      HTMLFrom?: string | string[];
-      screenshotFrom?: string | string[];
-      image?: string | string[];
-      video?: string | string[];
-      audio?: string | string[];
-      pdf?: string | string[];
-      text?: string | string[];
-      returnJson?: boolean;
-      parseJson?: boolean;
-      verbose?: boolean;
-      cache?: boolean;
-      test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-      clean?: (response: unknown) => unknown;
-      contextWindow?: number;
-      thinkingBudget?: number;
-      includeThoughts?: boolean;
-      geminiParameters?: Partial<GenerateContentParameters>;
-      ollamaParameters?: Partial<ChatRequest>;
-    };
-  }[],
+  requests: askAIRequest[],
   poolOptions: {
     poolSize: number;
     logProgress?: boolean;
@@ -194,87 +165,25 @@ export default async function askAIPool(
 ): Promise<{
   results: {
     index: number;
-    request: {
-      id?: string;
-      prompt: string;
-      options?: {
-        model?: string;
-        apiKey?: string;
-        vertex?: boolean;
-        project?: string;
-        location?: string;
-        ollama?: boolean | Ollama;
-        HTMLFrom?: string | string[];
-        screenshotFrom?: string | string[];
-        image?: string | string[];
-        video?: string | string[];
-        audio?: string | string[];
-        pdf?: string | string[];
-        text?: string | string[];
-        returnJson?: boolean;
-        parseJson?: boolean;
-        verbose?: boolean;
-        cache?: boolean;
-        test?:
-          | ((response: unknown) => void)
-          | ((response: unknown) => void)[];
-        clean?: (response: unknown) => unknown;
-        contextWindow?: number;
-        thinkingBudget?: number;
-        includeThoughts?: boolean;
-        geminiParameters?: Partial<GenerateContentParameters>;
-        ollamaParameters?: Partial<ChatRequest>;
-      };
-    };
+    request: askAIRequest;
     result: unknown;
   }[];
   errors: Array<
     {
       index: number;
-      request: {
-        id?: string;
-        prompt: string;
-        options?: {
-          model?: string;
-          apiKey?: string;
-          vertex?: boolean;
-          project?: string;
-          location?: string;
-          ollama?: boolean | Ollama;
-          HTMLFrom?: string | string[];
-          screenshotFrom?: string | string[];
-          image?: string | string[];
-          video?: string | string[];
-          audio?: string | string[];
-          pdf?: string | string[];
-          text?: string | string[];
-          returnJson?: boolean;
-          parseJson?: boolean;
-          verbose?: boolean;
-          cache?: boolean;
-          test?:
-            | ((response: unknown) => void)
-            | ((response: unknown) => void)[];
-          clean?: (response: unknown) => unknown;
-          contextWindow?: number;
-          thinkingBudget?: number;
-          includeThoughts?: boolean;
-          geminiParameters?: Partial<GenerateContentParameters>;
-          ollamaParameters?: Partial<ChatRequest>;
-        };
-      };
+      request: askAIRequest;
       error: unknown;
     }
   >;
 }> {
   const poolSize = poolOptions.poolSize;
   const maxRetries = poolOptions.retry ?? 0;
-  const results: { index: number; request: RequestItem; result: unknown }[] =
+  const results: { index: number; request: askAIRequest; result: unknown }[] =
     [];
   const errors: Array<
     {
       index: number;
-      request: RequestItem;
+      request: askAIRequest;
       error: unknown;
     }
   > = [];
