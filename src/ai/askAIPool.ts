@@ -4,6 +4,7 @@ import askAI from "./askAI.ts";
 import sleep from "./helpers/sleep.ts";
 import { formatNumber } from "@nshiab/journalism-format";
 
+/** A single request object for {@link askAIPool}, wrapping a prompt and its options. */
 export type askAIRequest = {
   id?: string;
   prompt: string;
