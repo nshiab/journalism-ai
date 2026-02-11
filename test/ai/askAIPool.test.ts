@@ -11,7 +11,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of Germany?" },
         { prompt: "What is the capital of Italy?" },
       ],
-      { poolSize: 5 },
+      5,
     );
     console.log(results);
     console.log(errors);
@@ -25,7 +25,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { id: "france", prompt: "What is the capital of France?" },
         { id: "germany", prompt: "What is the capital of Germany?" },
       ],
-      { poolSize: 2 },
+      2,
     );
     console.log(results);
 
@@ -46,7 +46,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
           options: { returnJson: true },
         },
       ],
-      { poolSize: 2 },
+      2,
     );
     console.log(results);
 
@@ -69,7 +69,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of Poland?" },
         { prompt: "What is the capital of Czech Republic?" },
       ],
-      { poolSize: 5, logProgress: true },
+      5,
+      { logProgress: true },
     );
     console.log(results);
 
@@ -89,7 +90,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of Germany?" },
         { prompt: "What is the capital of Italy?" },
       ],
-      { poolSize: 2, metrics, logProgress: true },
+      2,
+      { metrics, logProgress: true },
     );
     console.log(results);
     console.log(metrics);
@@ -105,7 +107,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
       ],
-      { poolSize: 1, minRequestDurationMs: 2000 },
+      1,
+      { minRequestDurationMs: 2000 },
     );
     const duration = Date.now() - start;
     console.log(`Duration: ${duration}ms`);
@@ -121,7 +124,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of Germany?" },
         { prompt: "What is the capital of Italy?" },
       ],
-      { poolSize: 3 },
+      3,
     );
 
     assertEquals(errors.length, 0);
@@ -158,7 +161,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
           },
         },
       ],
-      { poolSize: 1 },
+      1,
     );
     console.log(results);
 
@@ -173,7 +176,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
           options: { text: "test/data/data.csv" },
         },
       ],
-      { poolSize: 1 },
+      1,
     );
     console.log(results);
 

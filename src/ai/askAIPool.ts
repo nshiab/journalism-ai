@@ -52,7 +52,7 @@ export type askAIRequest = {
  *     { prompt: "What is the capital of Germany?" },
  *     { prompt: "What is the capital of Italy?" },
  *   ],
- *   { poolSize: 5 },
+ *   5,
  * );
  * for (const r of results) {
  *   console.log(r.result);
@@ -67,7 +67,7 @@ export type askAIRequest = {
  *     { id: "france", prompt: "What is the capital of France?" },
  *     { id: "germany", prompt: "What is the capital of Germany?" },
  *   ],
- *   { poolSize: 2 },
+ *   2,
  * );
  * for (const r of results) {
  *   console.log(r.request.id, r.result);
@@ -82,8 +82,8 @@ export type askAIRequest = {
  *     { prompt: "Summarize this article.", options: { text: "./article1.txt", returnJson: true } },
  *     { prompt: "Summarize this article.", options: { text: "./article2.txt", returnJson: true } },
  *   ],
+ *   3,
  *   {
- *     poolSize: 3,
  *     logProgress: true,
  *     retry: 2,
  *   },
@@ -105,8 +105,8 @@ export type askAIRequest = {
  *     { prompt: "What is 2+2?" },
  *     { prompt: "What is 3+3?" },
  *   ],
+ *   2,
  *   {
- *     poolSize: 2,
  *     minRequestDurationMs: 1000,
  *     metrics,
  *   },
@@ -122,8 +122,8 @@ export type askAIRequest = {
  *   [
  *     { prompt: "Analyze this image.", options: { image: "./photo.jpg", returnJson: true } },
  *   ],
+ *   1,
  *   {
- *     poolSize: 1,
  *     retry: 3,
  *     retryCheck: (error) => {
  *       // Only retry on rate limit errors
@@ -137,8 +137,8 @@ export type askAIRequest = {
  *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
  *   @param requests[].prompt - The primary text input for the AI model.
  *   @param requests[].options - Options passed to {@link askAI} for each individual request. See {@link askAI} for the full list of available options.
+ * @param poolSize - The number of concurrent workers processing requests.
  * @param poolOptions - Configuration for the pool execution.
- *   @param poolOptions.poolSize - The number of concurrent workers processing requests.
  *   @param poolOptions.logProgress - If `true`, logs progress to the console after each completed or failed request. Defaults to `false`.
  *   @param poolOptions.retry - The maximum number of retry attempts for a failed request. Defaults to `0` (no retries).
  *   @param poolOptions.retryCheck - A function that receives the error and returns whether the request should be retried. If not provided, all failed requests are retried up to the `retry` limit.
@@ -150,8 +150,8 @@ export type askAIRequest = {
  */
 export default async function askAIPool(
   requests: askAIRequest[],
+  poolSize: number,
   poolOptions: {
-    poolSize: number;
     logProgress?: boolean;
     retry?: number;
     retryCheck?: (error: unknown) => Promise<boolean> | boolean;
@@ -162,7 +162,7 @@ export default async function askAIPool(
       totalOutputTokens: number;
       totalRequests: number;
     };
-  },
+  } = {},
 ): Promise<{
   results: {
     index: number;
@@ -177,7 +177,6 @@ export default async function askAIPool(
     }
   >;
 }> {
-  const poolSize = poolOptions.poolSize;
   const maxRetries = poolOptions.retry ?? 0;
   const results: { index: number; request: askAIRequest; result: unknown }[] =
     [];
@@ -233,7 +232,7 @@ export default async function askAIPool(
         // Retry logic
         if (
           poolOptions.retryCheck
-            ? poolOptions.retryCheck(error) && attempt < maxRetries
+            ? (await poolOptions.retryCheck(error)) && attempt < maxRetries
             : attempt < maxRetries
         ) {
           // Re-queue the request with incremented attempt count
