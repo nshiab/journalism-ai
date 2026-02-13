@@ -520,6 +520,28 @@ if (typeof aiKey === "string" && aiKey !== "") {
     });
     assertEquals(true, true);
   });
+  Deno.test("should answer without grounding with web search", async () => {
+    await askAI("Who is Nael Shiab?", {
+      verbose: true,
+    });
+    assertEquals(true, true);
+  });
+  Deno.test("should answer with grounding with web search and caching", async () => {
+    await askAI("Who is Nael Shiab?", {
+      verbose: true,
+      webSearch: true,
+      cache: true,
+    });
+    assertEquals(true, true);
+  });
+  Deno.test("should answer with grounding with web search and return cached data", async () => {
+    await askAI("Who is Nael Shiab?", {
+      verbose: true,
+      webSearch: true,
+      cache: true,
+    });
+    assertEquals(true, true);
+  });
 } else {
   console.log("No AI_PROJECT in process.env");
 }
