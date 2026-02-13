@@ -6,6 +6,9 @@ import {
   type GenerateContentParameters,
   GenerateContentResponse,
   GoogleGenAI,
+  HarmBlockThreshold,
+  HarmCategory,
+  type SafetySetting,
 } from "@google/genai";
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
@@ -29,6 +32,8 @@ import { jsonrepair } from "jsonrepair";
  *
  * **File Handling**:
  * The function can process both local files and files stored in Google Cloud Storage (GCS). Simply provide the file path or the `gs://` URL. Note that Ollama only supports local files.
+ *
+ * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini.
  *
  * @example
  * ```ts
@@ -953,6 +958,29 @@ export default async function askAI(
   // Update the prompt in detailedResponse to reflect what was actually sent
   detailedResponse.prompt = promptToBeSent;
 
+  const safetySettings: SafetySetting[] = [
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+  ];
+
   // Just everything here
   const params = {
     model,
@@ -961,6 +989,7 @@ export default async function askAI(
     format: options.returnJson ? "json" : undefined,
     temperature: 0,
     config: {
+      safetySettings,
       temperature: 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
       thinkingConfig: typeof options.thinkingBudget === "number"
