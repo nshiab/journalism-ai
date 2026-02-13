@@ -70,6 +70,7 @@ async function askAI(
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     detailedResponse: true;
     geminiParameters?: Partial<GenerateContentParameters>;
@@ -480,6 +481,7 @@ async function askAI(
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     detailedResponse?: false;
     geminiParameters?: Partial<GenerateContentParameters>;
