@@ -33,7 +33,10 @@ import { jsonrepair } from "jsonrepair";
  * **File Handling**:
  * The function can process both local files and files stored in Google Cloud Storage (GCS). Simply provide the file path or the `gs://` URL. Note that Ollama only supports local files.
  *
- * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini. Grounding can be enabled by setting the webSearch option to true (Gemini only) .
+ * **Web Search Grounding**:
+ * For Gemini models, you can enable web search grounding by setting `webSearch` to `true`. This allows the AI to search the web for current information and ground its responses in real-time data. Note that this feature incurs additional API costs.
+ *
+ * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini.
  *
  * @example
  * ```ts
@@ -64,6 +67,18 @@ import { jsonrepair } from "jsonrepair";
  *   project: "your_project_id",
  *   location: "us-central1",
  * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Combine web search with other features for fact-checking.
+ * const factCheck = await askAI(
+ *   `Based on current web sources, verify the following claim and provide supporting evidence: "Renewable energy now accounts for over 30% of global electricity generation."`,
+ *   {
+ *     webSearch: true,
+ *   },
+ * );
+ * console.log(factCheck);
  * ```
  *
  * @example
@@ -333,7 +348,10 @@ export default async function askAI(
  * **File Handling**:
  * The function can process both local files and files stored in Google Cloud Storage (GCS). Simply provide the file path or the `gs://` URL. Note that Ollama only supports local files.
  *
- * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini. Grounding can be enabled by setting the webSearch option to true (Gemini only) .
+ * **Web Search Grounding**:
+ * For Gemini models, you can enable web search grounding by setting `webSearch` to `true`. This allows the AI to search the web for current information and ground its responses in real-time data. Note that this feature incurs additional API costs.
+ *
+ * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini.
  *
  * @example
  * ```ts
@@ -364,6 +382,18 @@ export default async function askAI(
  *   project: "your_project_id",
  *   location: "us-central1",
  * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Combine web search with other features for fact-checking.
+ * const factCheck = await askAI(
+ *   `Based on current web sources, verify the following claim and provide supporting evidence: "Renewable energy now accounts for over 30% of global electricity generation."`,
+ *   {
+ *     webSearch: true,
+ *   },
+ * );
+ * console.log(factCheck);
  * ```
  *
  * @example
