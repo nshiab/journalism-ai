@@ -15,6 +15,7 @@ export type askAIRequest = {
     project?: string;
     location?: string;
     ollama?: boolean | Ollama;
+    webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
     image?: string | string[];
