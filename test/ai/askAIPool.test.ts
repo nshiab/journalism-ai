@@ -1,6 +1,7 @@
 import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
 import askAIPool from "../../src/ai/askAIPool.ts";
+import * as z from "zod";
 
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
@@ -182,6 +183,79 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 1);
+  });
+  Deno.test("should not ground results with web search", async () => {
+    const { results, errors } = await askAIPool(
+      [
+        { prompt: "Who is Nael Shiab (CBC News)?" },
+        { prompt: "Who is Elizabeth Haggarty (CBC News)?" },
+        { prompt: "Who is Graeme Bruce (CBC News)?" },
+      ],
+      5,
+    );
+    console.log(results);
+    console.log(errors);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+  });
+  Deno.test("should ground results with web search", async () => {
+    const { results, errors } = await askAIPool(
+      [
+        {
+          prompt: "Who is Nael Shiab (CBC News)?",
+          options: { webSearch: true },
+        },
+        {
+          prompt: "Who is Elizabeth Haggarty (CBC News)?",
+          options: { webSearch: true },
+        },
+        {
+          prompt: "Who is Graeme Bruce (CBC News)?",
+          options: { webSearch: true },
+        },
+      ],
+      5,
+    );
+    console.log(results);
+    console.log(errors);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+  });
+  Deno.test("should return structured output", async () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        people: z.array(z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        })),
+      }),
+    );
+
+    const { results, errors } = await askAIPool(
+      [
+        {
+          prompt: "Give me 5 characters from Harry Potter.",
+          options: { schemaJson: schema },
+        },
+        {
+          prompt: "Give me 5 characters from Lord of the Rings.",
+          options: { schemaJson: schema },
+        },
+        {
+          prompt: "Give me 5 characters from Avengers.",
+          options: { schemaJson: schema },
+        },
+      ],
+      5,
+    );
+    console.log(results);
+    console.log(errors);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
   });
 } else {
   console.log("No AI_KEY or AI_PROJECT in process.env");

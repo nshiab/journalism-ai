@@ -135,6 +135,34 @@ export type askAIRequest = {
  * );
  * ```
  *
+ * @example
+ * ```ts
+ * // Use schemaJson to enforce structured output with a specific schema.
+ * import * as z from "zod";
+ *
+ * const schema = z.toJSONSchema(
+ *   z.object({
+ *     people: z.array(z.object({
+ *       name: z.string(),
+ *       age: z.number(),
+ *       gender: z.enum(["man", "woman"]),
+ *     })),
+ *   }),
+ * );
+ *
+ * const { results, errors } = await askAIPool(
+ *   [
+ *     { prompt: "Give me 5 characters from Harry Potter.", options: { schemaJson: schema } },
+ *     { prompt: "Give me 5 characters from Lord of the Rings.", options: { schemaJson: schema } },
+ *   ],
+ *   2,
+ * );
+ * // Each result will conform to the specified schema
+ * for (const r of results) {
+ *   console.log(r.result); // { people: [{ name: "...", age: ..., gender: "..." }, ...] }
+ * }
+ * ```
+ *
  * @param requests - An array of request objects to process.
  *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
  *   @param requests[].prompt - The primary text input for the AI model.
