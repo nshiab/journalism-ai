@@ -25,6 +25,7 @@ export type askAIRequest = {
     text?: string | string[];
     returnJson?: boolean;
     parseJson?: boolean;
+    schemaJson?: unknown;
     verbose?: boolean;
     cache?: boolean;
     test?:

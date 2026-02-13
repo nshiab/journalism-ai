@@ -9,7 +9,6 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   type SafetySetting,
-  type Schema,
 } from "@google/genai";
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
@@ -80,6 +79,26 @@ import { jsonrepair } from "jsonrepair";
  *   },
  * );
  * console.log(factCheck);
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Return a response that conforms to a specific JSON schema.
+ * import * as z from "zod";
+ *
+ * const schema = z.toJSONSchema(
+ *   z.array(z.object({
+ *     name: z.string(),
+ *     age: z.number(),
+ *     gender: z.enum(["man", "woman"]),
+ *   })),
+ * );
+ *
+ * await askAI("Give me 10 random people.", {
+ *   verbose: true,
+ *   cache: true,
+ *   schemaJson: schema,
+ * });
  * ```
  *
  * @example
@@ -265,6 +284,7 @@ import { jsonrepair } from "jsonrepair";
  *   @param options.text - A path or GCS URL (or an array of them) to a text file.
  *   @param options.returnJson - If `true`, instructs the AI to return a JSON object. Defaults to `false`.
  *   @param options.parseJson - If `true`, automatically parses the AI's response as JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
+ *   @param options.schemaJson - A Zod JSON schema object to enforce structured output. When provided, the AI will return data that conforms to the specified schema. Automatically enables `returnJson` and `parseJson`.
  *   @param options.cache - If `true`, caches the response locally in a `.journalism-cache` directory. Defaults to `false`.
  *   @param options.verbose - If `true`, enables detailed logging, including token usage and estimated costs. Defaults to `false`.
  *   @param options.clean - A function to process and clean the AI's response before it is returned or tested. This function is called after JSON parsing (if `parseJson` is `true`). The response parameter will be the parsed JSON object if `parseJson` is true, or a string otherwise.
@@ -401,6 +421,26 @@ export default async function askAI(
  *
  * @example
  * ```ts
+ * // Return a response that conforms to a specific JSON schema.
+ * import * as z from "zod";
+ *
+ * const schema = z.toJSONSchema(
+ *   z.array(z.object({
+ *     name: z.string(),
+ *     age: z.number(),
+ *     gender: z.enum(["man", "woman"]),
+ *   })),
+ * );
+ *
+ * await askAI("Give me 10 random people.", {
+ *   verbose: true,
+ *   cache: true,
+ *   schemaJson: schema,
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
  * // Scrape and analyze HTML content from a URL.
  * const orders = await askAI(
  *   `From the following HTML, extract the executive order titles, their dates (in yyyy-mm-dd format), and their URLs. Return the data as a JSON array of objects.`,
@@ -582,6 +622,7 @@ export default async function askAI(
  *   @param options.text - A path or GCS URL (or an array of them) to a text file.
  *   @param options.returnJson - If `true`, instructs the AI to return a JSON object. Defaults to `false`.
  *   @param options.parseJson - If `true`, automatically parses the AI's response as JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
+ *   @param options.schemaJson - A Zod JSON schema object to enforce structured output. When provided, the AI will return data that conforms to the specified schema. Automatically enables `returnJson` and `parseJson`.
  *   @param options.cache - If `true`, caches the response locally in a `.journalism-cache` directory. Defaults to `false`.
  *   @param options.verbose - If `true`, enables detailed logging, including token usage and estimated costs. Defaults to `false`.
  *   @param options.clean - A function to process and clean the AI's response before it is returned or tested. This function is called after JSON parsing (if `parseJson` is `true`). The response parameter will be the parsed JSON object if `parseJson` is true, or a string otherwise.
@@ -1030,7 +1071,11 @@ export default async function askAI(
     model,
     contents: contents,
     messages: [message],
-    format: options.returnJson ? "json" : undefined,
+    format: options.schemaJson
+      ? options.schemaJson
+      : options.returnJson
+      ? "json"
+      : undefined,
     temperature: 0,
     config: {
       safetySettings,
@@ -1150,7 +1195,7 @@ export default async function askAI(
     : await client.chat({
       model,
       messages: [message],
-      format: options.returnJson ? "json" : undefined,
+      format: params.format,
       options: {
         temperature: 0,
         num_ctx: options.contextWindow,
