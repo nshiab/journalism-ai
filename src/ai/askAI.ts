@@ -9,6 +9,7 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   type SafetySetting,
+  ThinkingLevel,
 } from "@google/genai";
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
@@ -327,6 +328,7 @@ export default async function askAI(
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     detailedResponse: true;
     geminiParameters?: Partial<GenerateContentParameters>;
@@ -665,6 +667,7 @@ export default async function askAI(
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     detailedResponse?: false;
     geminiParameters?: Partial<GenerateContentParameters>;
@@ -705,6 +708,7 @@ export default async function askAI(
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     detailedResponse?: boolean;
     geminiParameters?: Partial<GenerateContentParameters>;
@@ -1082,7 +1086,14 @@ export default async function askAI(
       temperature: 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
       responseJsonSchema: options.schemaJson,
-      thinkingConfig: typeof options.thinkingBudget === "number"
+      thinkingConfig: options.thinkingLevel
+        ? {
+          thinkingLevel: ThinkingLevel[
+            options.thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
+          ],
+          includeThoughts: options.includeThoughts ?? false,
+        }
+        : typeof options.thinkingBudget === "number"
         ? {
           thinkingBudget: options.thinkingBudget ?? 0,
           includeThoughts:
@@ -1365,6 +1376,18 @@ export default async function askAI(
       },
       {
         model: "gemini-3-flash",
+        input: hasAudio ? 1.00 : 0.50,
+        output: 3.00,
+      },
+      {
+        model: "gemini-3-pro-preview",
+        tiers: [
+          { threshold: 200_000, input: 2.00, output: 12.00 },
+          { threshold: Infinity, input: 4.00, output: 18.00 },
+        ],
+      },
+      {
+        model: "gemini-3-flash-preview",
         input: hasAudio ? 1.00 : 0.50,
         output: 3.00,
       },

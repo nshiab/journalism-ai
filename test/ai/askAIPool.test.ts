@@ -257,6 +257,99 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
+  Deno.test("should run with minimal thinking level by default", async () => {
+    const metrics = {
+      totalCost: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalRequests: 0,
+    };
+
+    const { results, errors } = await askAIPool(
+      [
+        {
+          prompt: "How do you feel?",
+          options: {
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+        {
+          prompt: "Where do you live?",
+          options: {
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+        {
+          prompt: "Do you have a consciousness?",
+          options: {
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+      ],
+      1,
+      { metrics, logProgress: true },
+    );
+    console.log(results);
+    console.log(errors);
+    console.table(metrics);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+  });
+  Deno.test("should run with high thinking level by default", async () => {
+    const metrics = {
+      totalCost: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalRequests: 0,
+    };
+
+    const { results, errors } = await askAIPool(
+      [
+        {
+          prompt: "How do you feel?",
+          options: {
+            thinkingLevel: "high",
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+        {
+          prompt: "Where do you live?",
+          options: {
+            thinkingLevel: "high",
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+        {
+          prompt: "Do you have a consciousness?",
+          options: {
+            thinkingLevel: "high",
+            model: "gemini-3-flash-preview",
+            verbose: true,
+            includeThoughts: true,
+          },
+        },
+      ],
+      1,
+      { metrics, logProgress: true },
+    );
+    console.log(results);
+    console.log(errors);
+    console.table(metrics);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+  });
 } else {
   console.log("No AI_KEY or AI_PROJECT in process.env");
 }
