@@ -576,6 +576,25 @@ if (typeof aiKey === "string" && aiKey !== "") {
     });
     assertEquals(true, true);
   });
+  Deno.test("should work with thinking level minimal by default", async () => {
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      includeThoughts: true,
+      model: "gemini-3-flash-preview",
+    });
+    assertEquals(true, true);
+  });
+  Deno.test("should work with thinking level medium", async () => {
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      thinkingLevel: "medium",
+      includeThoughts: true,
+      model: "gemini-3-flash-preview",
+    });
+    assertEquals(true, true);
+  });
 } else {
   console.log("No AI_PROJECT in process.env");
 }

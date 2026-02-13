@@ -33,6 +33,7 @@ export type askAIRequest = {
       | ((response: unknown) => void)[];
     clean?: (response: unknown) => unknown;
     contextWindow?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
     thinkingBudget?: number;
     includeThoughts?: boolean;
     geminiParameters?: Partial<GenerateContentParameters>;
