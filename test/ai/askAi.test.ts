@@ -3,6 +3,7 @@ import { assertEquals } from "jsr:@std/assert";
 import askAI from "../../src/ai/askAI.ts";
 import { existsSync, rmSync } from "node:fs";
 import { Ollama } from "ollama";
+import * as z from "zod";
 
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
@@ -542,6 +543,39 @@ if (typeof aiKey === "string" && aiKey !== "") {
     });
     assertEquals(true, true);
   });
+
+  Deno.test("should return a structured output and cache it", async () => {
+    const schema = z.toJSONSchema(
+      z.array(z.object({
+        name: z.string(),
+        age: z.number(),
+        gender: z.enum(["man", "woman"]),
+      })),
+    );
+
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      schemaJson: schema,
+    });
+    assertEquals(true, true);
+  });
+  Deno.test("should return a cached structured output", async () => {
+    const schema = z.toJSONSchema(
+      z.array(z.object({
+        name: z.string(),
+        age: z.number(),
+        gender: z.enum(["man", "woman"]),
+      })),
+    );
+
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      schemaJson: schema,
+    });
+    assertEquals(true, true);
+  });
 } else {
   console.log("No AI_PROJECT in process.env");
 }
@@ -892,6 +926,46 @@ if (ollama) {
       );
     }
     assertEquals(typeof result, "string");
+  });
+  Deno.test("should return a structured output and cache it", {
+    sanitizeResources: false,
+  }, async () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        people: z.array(z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        })),
+      }),
+    );
+
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      schemaJson: schema,
+    });
+    assertEquals(true, true);
+  });
+  Deno.test("should return a cached structured output", {
+    sanitizeResources: false,
+  }, async () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        people: z.array(z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        })),
+      }),
+    );
+
+    await askAI("Give me 10 random people.", {
+      verbose: true,
+      cache: true,
+      schemaJson: schema,
+    });
+    assertEquals(true, true);
   });
 } else {
   console.log("No OLLAMA in process.env");
