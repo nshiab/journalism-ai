@@ -28,7 +28,8 @@
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "jsonrepair": "npm:jsonrepair@^3.13.2",
     "ollama": "npm:ollama@^0.6.3",
-    "playwright-chromium": "npm:playwright-chromium@^1.57.0"
+    "playwright-chromium": "npm:playwright-chromium@^1.57.0",
+    "zod": "npm:zod@^4.3.6"
   },
   "compilerOptions": {
     "lib": [

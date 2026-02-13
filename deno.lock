@@ -15,7 +15,8 @@
     "npm:google-spreadsheet@^5.0.2": "5.0.2_google-auth-library@10.5.0",
     "npm:jsonrepair@^3.13.2": "3.13.2",
     "npm:ollama@~0.6.3": "0.6.3",
-    "npm:playwright-chromium@^1.57.0": "1.57.0"
+    "npm:playwright-chromium@^1.57.0": "1.57.0",
+    "npm:zod@^4.3.6": "4.3.6"
   },
   "jsr": {
     "@nshiab/journalism-format@1.0.3": {
@@ -461,6 +462,7 @@
         "package-json-from-dist",
         "path-scurry"
       ],
+      "deprecated": true,
       "bin": true
     },
     "google-auth-library@10.5.0": {
@@ -898,6 +900,9 @@
     },
     "yocto-queue@0.1.0": {
       "integrity": "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q=="
+    },
+    "zod@4.3.6": {
+      "integrity": "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="
     }
   },
   "workspace": {
@@ -908,7 +913,8 @@
       "npm:@google/genai@^1.37.0",
       "npm:jsonrepair@^3.13.2",
       "npm:ollama@~0.6.3",
-      "npm:playwright-chromium@^1.57.0"
+      "npm:playwright-chromium@^1.57.0",
+      "npm:zod@^4.3.6"
     ]
   }
 }

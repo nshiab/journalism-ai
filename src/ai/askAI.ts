@@ -9,6 +9,7 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   type SafetySetting,
+  type Schema,
 } from "@google/genai";
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
@@ -289,6 +290,7 @@ export default async function askAI(
     project?: string;
     location?: string;
     ollama?: boolean | Ollama;
+    webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
     image?: string | string[];
@@ -298,6 +300,7 @@ export default async function askAI(
     text?: string | string[];
     returnJson?: boolean;
     parseJson?: boolean;
+    schemaJson?: unknown;
     verbose?: boolean;
     cache?: boolean;
     test?: ((response: unknown) => void) | ((response: unknown) => void)[];
@@ -614,6 +617,7 @@ export default async function askAI(
     text?: string | string[];
     returnJson?: boolean;
     parseJson?: boolean;
+    schemaJson?: unknown;
     verbose?: boolean;
     cache?: boolean;
     test?: ((response: unknown) => void) | ((response: unknown) => void)[];
@@ -653,6 +657,7 @@ export default async function askAI(
     text?: string | string[];
     returnJson?: boolean;
     parseJson?: boolean;
+    schemaJson?: unknown;
     verbose?: boolean;
     cache?: boolean;
     test?: ((response: unknown) => void) | ((response: unknown) => void)[];
@@ -675,7 +680,10 @@ export default async function askAI(
   let client;
   const ollamaVar = options.ollama === true ||
     options.ollama instanceof Ollama || process.env.OLLAMA;
-  const defaults = { parseJson: options.returnJson ?? false };
+  const defaults = {
+    returnJson: options.returnJson || options.schemaJson ? true : false,
+    parseJson: options.returnJson || options.schemaJson ? true : false,
+  };
   options = { ...defaults, ...options };
 
   // Initialize detailed response tracking
@@ -1028,6 +1036,7 @@ export default async function askAI(
       safetySettings,
       temperature: 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
+      responseJsonSchema: options.schemaJson,
       thinkingConfig: typeof options.thinkingBudget === "number"
         ? {
           thinkingBudget: options.thinkingBudget ?? 0,
