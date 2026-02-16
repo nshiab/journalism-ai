@@ -9,6 +9,7 @@ export type askAIRequest = {
   id?: string;
   prompt: string;
   options?: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
