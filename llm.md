@@ -47,6 +47,7 @@ Safety and content filters are disabled by default for Gemini.
 async function askAI(
   prompt: string,
   options: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -105,6 +106,9 @@ async function askAI(
 
 - **`prompt`**: - The primary text input for the AI model.
 - **`options`**: - A comprehensive set of options.
+- **`options.systemPrompt`**: - An optional system prompt to provide additional
+  context or instructions to the AI model. This can help guide the AI's response
+  in a specific direction or tone.
 - **`options.model`**: - The specific AI model to use (e.g.,
   'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
 - **`options.apiKey`**: - Your API key for the AI service. Defaults to the
@@ -464,6 +468,7 @@ Safety and content filters are disabled by default for Gemini.
 async function askAI(
   prompt: string,
   options?: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -506,6 +511,9 @@ async function askAI(
 
 - **`prompt`**: - The primary text input for the AI model.
 - **`options`**: - A comprehensive set of options.
+- **`options.systemPrompt`**: - An optional system prompt to provide additional
+  context or instructions to the AI model. This can help guide the AI's response
+  in a specific direction or tone.
 - **`options.model`**: - The specific AI model to use (e.g.,
   'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
 - **`options.apiKey`**: - Your API key for the AI service. Defaults to the
