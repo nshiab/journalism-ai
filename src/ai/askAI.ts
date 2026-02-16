@@ -269,6 +269,7 @@ import { jsonrepair } from "jsonrepair";
  * ```
  * @param prompt - The primary text input for the AI model.
  * @param options - A comprehensive set of options.
+ *   @param options.systemPrompt - An optional system prompt to provide additional context or instructions to the AI model. This can help guide the AI's response in a specific direction or tone.
  *   @param options.model - The specific AI model to use (e.g., 'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
  *   @param options.apiKey - Your API key for the AI service. Defaults to the `AI_KEY` environment variable.
  *   @param options.vertex - Set to `true` to use Vertex AI for authentication. Auto-enables if `AI_PROJECT` and `AI_LOCATION` are set.
@@ -306,6 +307,7 @@ import { jsonrepair } from "jsonrepair";
 export default async function askAI(
   prompt: string,
   options: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -609,6 +611,7 @@ export default async function askAI(
  * ```
  * @param prompt - The primary text input for the AI model.
  * @param options - A comprehensive set of options.
+ *   @param options.systemPrompt - An optional system prompt to provide additional context or instructions to the AI model. This can help guide the AI's response in a specific direction or tone.
  *   @param options.model - The specific AI model to use (e.g., 'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
  *   @param options.apiKey - Your API key for the AI service. Defaults to the `AI_KEY` environment variable.
  *   @param options.vertex - Set to `true` to use Vertex AI for authentication. Auto-enables if `AI_PROJECT` and `AI_LOCATION` are set.
@@ -646,6 +649,7 @@ export default async function askAI(
 export default async function askAI(
   prompt: string,
   options?: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -687,6 +691,7 @@ export default async function askAI(
 export default async function askAI(
   prompt: string,
   options: {
+    systemPrompt?: string;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -802,6 +807,10 @@ export default async function askAI(
   detailedResponse.model = model;
 
   if (options.verbose) {
+    if (options.systemPrompt) {
+      console.log(`\nSystem prompt:`);
+      console.log(options.systemPrompt);
+    }
     console.log(`\nPrompt to ${model}:`);
     console.log(prompt);
   }
@@ -1077,6 +1086,7 @@ export default async function askAI(
     model,
     contents: contents,
     messages: [message],
+    system: options.systemPrompt,
     format: options.schemaJson
       ? options.schemaJson
       : options.returnJson
@@ -1084,6 +1094,7 @@ export default async function askAI(
       : undefined,
     temperature: 0,
     config: {
+      systemInstruction: options.systemPrompt,
       safetySettings,
       temperature: 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
@@ -1207,7 +1218,9 @@ export default async function askAI(
     })
     : await client.chat({
       model,
-      messages: [message],
+      messages: options.systemPrompt
+        ? [{ role: "system", content: options.systemPrompt }, message]
+        : [message],
       format: params.format,
       options: {
         temperature: 0,
