@@ -814,7 +814,7 @@ export default async function askAI(
     console.log(`\nPrompt to ${model}:`);
     console.log(prompt);
     if (options.schemaJson) {
-      console.log(`\nJSON schema for response:`);
+      console.log(`JSON schema for response:`);
       console.log(JSON.stringify(options.schemaJson, null, 2));
     }
   }
