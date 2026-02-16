@@ -22,13 +22,13 @@
   },
   "nodeModulesDir": "auto",
   "imports": {
-    "@google/genai": "npm:@google/genai@^1.37.0",
+    "@google/genai": "npm:@google/genai@^1.41.0",
     "@nshiab/journalism-format": "jsr:@nshiab/journalism-format@^1.0.3",
-    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.1",
+    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.4",
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "jsonrepair": "npm:jsonrepair@^3.13.2",
     "ollama": "npm:ollama@^0.6.3",
-    "playwright-chromium": "npm:playwright-chromium@^1.57.0",
+    "playwright-chromium": "npm:playwright-chromium@^1.58.2",
     "zod": "npm:zod@^4.3.6"
   },
   "compilerOptions": {

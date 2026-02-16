@@ -1108,19 +1108,16 @@ export default async function askAI(
           thinkingLevel: ThinkingLevel[
             options.thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
           ],
-          includeThoughts: options.includeThoughts ?? false,
+          includeThoughts: options.includeThoughts ?? options.verbose,
         }
         : typeof options.thinkingBudget === "number"
         ? {
           thinkingBudget: options.thinkingBudget ?? 0,
-          includeThoughts:
-            options.includeThoughts ?? options.thinkingBudget === 0
-              ? false
-              : true,
+          includeThoughts: options.includeThoughts ?? options.verbose,
         }
         : {
           thinkingBudget: 0,
-          includeThoughts: false,
+          includeThoughts: options.includeThoughts ?? options.verbose,
         },
       tools: options.webSearch
         ? [
@@ -1230,7 +1227,9 @@ export default async function askAI(
         temperature: 0,
         num_ctx: options.contextWindow,
       },
-      think: (options.thinkingBudget ?? 0) > 0,
+      think: options.thinkingLevel === "minimal"
+        ? "low"
+        : options.thinkingLevel ?? (options.thinkingBudget ?? 0) > 0,
       ...(options.ollamaParameters ?? {}),
       stream: true,
     });
@@ -1550,6 +1549,9 @@ export default async function askAI(
           "Tokens out:",
           formatNumber(detailedResponse.outputTokenCount),
           "/",
+          "Thinking tokens:",
+          formatNumber(detailedResponse.thoughtsTokenCount),
+          "/",
           "Tokens per second:",
           formatNumber(detailedResponse.tokensPerSecond, {
             significantDigits: 1,
@@ -1597,6 +1599,9 @@ export default async function askAI(
         "/",
         "Tokens out:",
         formatNumber(detailedResponse.outputTokenCount),
+        "/",
+        "Thinking tokens:",
+        "N/A",
         "/",
         "Tokens per second:",
         formatNumber(detailedResponse.tokensPerSecond, {
