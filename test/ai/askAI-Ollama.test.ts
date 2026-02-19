@@ -20,6 +20,16 @@ if (ollama) {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
+  Deno.test("should use a simple prompt with a high temperature (ollama)", async () => {
+    const result = await askAI("What is the capital of France?", {
+      verbose: true,
+      temperature: 1,
+    });
+    console.log(result);
+
+    // Just making sure it doesn't crash for now.
+    assertEquals(true, true);
+  });
   Deno.test("should use a simple prompt with thinking (ollama)", {
     sanitizeResources: false,
   }, async () => {

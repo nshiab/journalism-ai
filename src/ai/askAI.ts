@@ -295,6 +295,7 @@ import { jsonrepair } from "jsonrepair";
  *   @param options.thinkingBudget - Sets the reasoning token budget: 0 to disable (default, though some models may reason regardless), -1 for a dynamic budget, or > 0 for a fixed budget. For Ollama models, any non-zero value simply enables reasoning, ignoring the specific budget amount. Note: `thinkingLevel` takes precedence over `thinkingBudget` if both are provided.
  *   @param options.thinkingLevel - Sets the thinking level for reasoning: "minimal", "low", "medium", or "high", which some models expect instead of `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided. For Ollama models, any value enables reasoning.
  *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget or thinking level. Defaults to `false`.
+ *   @param options.temperature - Sets the temperature for response generation, controlling the randomness of the output. A value of 0 (default) makes the output more deterministic, while higher values (e.g., 0.7) increase creativity and variability.`.
  *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
  *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
  *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
@@ -333,6 +334,7 @@ export default async function askAI(
     thinkingBudget?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
+    temperature?: number;
     detailedResponse: true;
     geminiParameters?: Partial<GenerateContentParameters>;
     ollamaParameters?: Partial<ChatRequest>;
@@ -637,6 +639,7 @@ export default async function askAI(
  *   @param options.thinkingBudget - Sets the reasoning token budget: 0 to disable (default, though some models may reason regardless), -1 for a dynamic budget, or > 0 for a fixed budget. For Ollama models, any non-zero value simply enables reasoning, ignoring the specific budget amount. Note: `thinkingLevel` takes precedence over `thinkingBudget` if both are provided.
  *   @param options.thinkingLevel - Sets the thinking level for reasoning: "minimal", "low", "medium", or "high", which some models expect instead of `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided. For Ollama models, any value enables reasoning.
  *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget or thinking level. Defaults to `false`.
+ *   @param options.temperature - Sets the temperature for response generation, controlling the randomness of the output. A value of 0 (default) makes the output more deterministic, while higher values (e.g., 0.7) increase creativity and variability.`.
  *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
  *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
  *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
@@ -675,6 +678,7 @@ export default async function askAI(
     thinkingBudget?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
+    temperature?: number;
     detailedResponse?: false;
     geminiParameters?: Partial<GenerateContentParameters>;
     ollamaParameters?: Partial<ChatRequest>;
@@ -717,6 +721,7 @@ export default async function askAI(
     thinkingBudget?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
+    temperature?: number;
     detailedResponse?: boolean;
     geminiParameters?: Partial<GenerateContentParameters>;
     ollamaParameters?: Partial<ChatRequest>;
@@ -1096,11 +1101,11 @@ export default async function askAI(
       : options.returnJson
       ? "json"
       : undefined,
-    temperature: 0,
+    temperature: options.temperature ?? 0,
     config: {
       systemInstruction: options.systemPrompt,
       safetySettings,
-      temperature: 0,
+      temperature: options.temperature ?? 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
       responseJsonSchema: options.schemaJson,
       thinkingConfig: options.thinkingLevel
