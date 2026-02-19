@@ -11,6 +11,7 @@ export type askAIRequest = {
   options?: {
     systemPrompt?: string;
     model?: string;
+    temperature?: number;
     apiKey?: string;
     vertex?: boolean;
     project?: string;
