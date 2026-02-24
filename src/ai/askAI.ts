@@ -1113,16 +1113,16 @@ export default async function askAI(
           thinkingLevel: ThinkingLevel[
             options.thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
           ],
-          includeThoughts: options.includeThoughts ?? options.verbose,
+          includeThoughts: options.includeThoughts,
         }
         : typeof options.thinkingBudget === "number"
         ? {
           thinkingBudget: options.thinkingBudget ?? 0,
-          includeThoughts: options.includeThoughts ?? options.verbose,
+          includeThoughts: options.includeThoughts,
         }
         : {
           thinkingBudget: 0,
-          includeThoughts: options.includeThoughts ?? options.verbose,
+          includeThoughts: options.includeThoughts,
         },
       tools: options.webSearch
         ? [
