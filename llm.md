@@ -53,7 +53,7 @@ async function askAI(
     vertex?: boolean;
     project?: string;
     location?: string;
-    ollama?: boolean | Ollama;
+    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
@@ -75,8 +75,8 @@ async function askAI(
     includeThoughts?: boolean;
     temperature?: number;
     detailedResponse: true;
-    geminiParameters?: Partial<GenerateContentParameters>;
-    ollamaParameters?: Partial<ChatRequest>;
+    geminiParameters?: any;
+    ollamaParameters?: any;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
@@ -105,86 +105,82 @@ async function askAI(
 
 ### Parameters
 
-- **`prompt`**: - The primary text input for the AI model.
-- **`options`**: - A comprehensive set of options.
-- **`options.systemPrompt`**: - An optional system prompt to provide additional
+- **`prompt`**: The primary text input for the AI model.
+- **`options`**: A comprehensive set of options.
+- **`options.systemPrompt`**: An optional system prompt to provide additional
   context or instructions to the AI model. This can help guide the AI's response
   in a specific direction or tone.
-- **`options.model`**: - The specific AI model to use (e.g.,
-  'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
-- **`options.apiKey`**: - Your API key for the AI service. Defaults to the
+- **`options.model`**: The specific AI model to use (e.g., 'gemini-1.5-flash').
+  Defaults to the `AI_MODEL` environment variable.
+- **`options.apiKey`**: Your API key for the AI service. Defaults to the
   `AI_KEY` environment variable.
-- **`options.vertex`**: - Set to `true` to use Vertex AI for authentication.
+- **`options.vertex`**: Set to `true` to use Vertex AI for authentication.
   Auto-enables if `AI_PROJECT` and `AI_LOCATION` are set.
-- **`options.project`**: - Your Google Cloud project ID. Defaults to the
+- **`options.project`**: Your Google Cloud project ID. Defaults to the
   `AI_PROJECT` environment variable.
-- **`options.location`**: - The Google Cloud location for your project. Defaults
+- **`options.location`**: The Google Cloud location for your project. Defaults
   to the `AI_LOCATION` environment variable.
-- **`options.ollama`**: - Set to `true` to use a local Ollama model. Defaults to
+- **`options.ollama`**: Set to `true` to use a local Ollama model. Defaults to
   the `OLLAMA` environment variable. If you want your Ollama instance to be
   used, you can pass it here too.
-- **`options.webSearch`**: - (Gemini only) If `true`, enables web search
-  grounding for the AI's responses. Be careful of extra costs. Defaults to
-  `false`.
-- **`options.HTMLFrom`**: - A URL or an array of URLs to scrape HTML content
-  from. The content is appended to the prompt.
-- **`options.screenshotFrom`**: - A URL or an array of URLs to take a screenshot
+- **`options.webSearch`**: (Gemini only) If `true`, enables web search grounding
+  for the AI's responses. Be careful of extra costs. Defaults to `false`.
+- **`options.HTMLFrom`**: A URL or an array of URLs to scrape HTML content from.
+  The content is appended to the prompt.
+- **`options.screenshotFrom`**: A URL or an array of URLs to take a screenshot
   from for analysis.
-- **`options.image`**: - A path or GCS URL (or an array of them) to an image
-  file.
-- **`options.video`**: - A path or GCS URL (or an array of them) to a video
-  file.
-- **`options.audio`**: - A path or GCS URL (or an array of them) to an audio
-  file.
-- **`options.pdf`**: - A path or GCS URL (or an array of them) to a PDF file.
-- **`options.text`**: - A path or GCS URL (or an array of them) to a text file.
-- **`options.returnJson`**: - If `true`, instructs the AI to return a JSON
-  object. Defaults to `false`.
-- **`options.parseJson`**: - If `true`, automatically parses the AI's response
-  as JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
-- **`options.schemaJson`**: - A Zod JSON schema object to enforce structured
+- **`options.image`**: A path or GCS URL (or an array of them) to an image file.
+- **`options.video`**: A path or GCS URL (or an array of them) to a video file.
+- **`options.audio`**: A path or GCS URL (or an array of them) to an audio file.
+- **`options.pdf`**: A path or GCS URL (or an array of them) to a PDF file.
+- **`options.text`**: A path or GCS URL (or an array of them) to a text file.
+- **`options.returnJson`**: If `true`, instructs the AI to return a JSON object.
+  Defaults to `false`.
+- **`options.parseJson`**: If `true`, automatically parses the AI's response as
+  JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
+- **`options.schemaJson`**: A Zod JSON schema object to enforce structured
   output. When provided, the AI will return data that conforms to the specified
   schema. Automatically enables `returnJson` and `parseJson`.
-- **`options.cache`**: - If `true`, caches the response locally in a
+- **`options.cache`**: If `true`, caches the response locally in a
   `.journalism-cache` directory. Defaults to `false`.
-- **`options.verbose`**: - If `true`, enables detailed logging, including token
+- **`options.verbose`**: If `true`, enables detailed logging, including token
   usage and estimated costs. Defaults to `false`.
-- **`options.clean`**: - A function to process and clean the AI's response
-  before it is returned or tested. This function is called after JSON parsing
-  (if `parseJson` is `true`). The response parameter will be the parsed JSON
-  object if `parseJson` is true, or a string otherwise.
-- **`options.test`**: - A function or an array of functions to validate the AI's
+- **`options.clean`**: A function to process and clean the AI's response before
+  it is returned or tested. This function is called after JSON parsing (if
+  `parseJson` is `true`). The response parameter will be the parsed JSON object
+  if `parseJson` is true, or a string otherwise.
+- **`options.test`**: A function or an array of functions to validate the AI's
   response before it's returned.
-- **`options.contextWindow`**: - An option to specify the context window size
-  for Ollama models. By default, Ollama sets this depending on the model, which
-  can be lower than the actual maximum context window size of the model.
-- **`options.thinkingBudget`**: - Sets the reasoning token budget: 0 to disable
+- **`options.contextWindow`**: An option to specify the context window size for
+  Ollama models. By default, Ollama sets this depending on the model, which can
+  be lower than the actual maximum context window size of the model.
+- **`options.thinkingBudget`**: Sets the reasoning token budget: 0 to disable
   (default, though some models may reason regardless), -1 for a dynamic budget,
   or > 0 for a fixed budget. For Ollama models, any non-zero value simply
   enables reasoning, ignoring the specific budget amount. Note: `thinkingLevel`
   takes precedence over `thinkingBudget` if both are provided.
-- **`options.thinkingLevel`**: - Sets the thinking level for reasoning:
-  "minimal", "low", "medium", or "high", which some models expect instead of
+- **`options.thinkingLevel`**: Sets the thinking level for reasoning: "minimal",
+  "low", "medium", or "high", which some models expect instead of
   `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided.
   For Ollama models, any value enables reasoning.
-- **`options.includeThoughts`**: - If `true`, includes the AI's reasoning
-  thoughts in the output when using a thinking budget or thinking level.
-  Defaults to `false`.
-- **`options.temperature`**: - Sets the temperature for response generation,
+- **`options.includeThoughts`**: If `true`, includes the AI's reasoning thoughts
+  in the output when using a thinking budget or thinking level. Defaults to
+  `false`.
+- **`options.temperature`**: Sets the temperature for response generation,
   controlling the randomness of the output. A value of 0 (default) makes the
   output more deterministic, while higher values (e.g., 0.7) increase creativity
   and variability.`.
-- **`options.detailedResponse`**: - If `true`, returns an object containing both
+- **`options.detailedResponse`**: If `true`, returns an object containing both
   the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
-- **`options.geminiParameters`**: - Additional parameters to pass to the Gemini
+- **`options.geminiParameters`**: Additional parameters to pass to the Gemini
   `generateContentStream` method. These will be merged with the default
   parameters, allowing you to override or extend the configuration (e.g., custom
   safety settings, generation config, system instructions).
-- **`options.ollamaParameters`**: - Additional parameters to pass to the Ollama
+- **`options.ollamaParameters`**: Additional parameters to pass to the Ollama
   `chat` method. These will be merged with the default parameters, allowing you
   to override or extend the configuration (e.g., custom options, keep_alive
   settings).
-- **`options.metrics`**: - An object to track cumulative metrics across multiple
+- **`options.metrics`**: An object to track cumulative metrics across multiple
   AI requests. Pass an object with `totalCost`, `totalInputTokens`,
   `totalOutputTokens`, and `totalRequests` properties (all initialized to 0).
   The function will update these values after each request. Note: `totalCost` is
@@ -479,7 +475,7 @@ async function askAI(
     vertex?: boolean;
     project?: string;
     location?: string;
-    ollama?: boolean | Ollama;
+    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
@@ -501,8 +497,8 @@ async function askAI(
     includeThoughts?: boolean;
     temperature?: number;
     detailedResponse?: false;
-    geminiParameters?: Partial<GenerateContentParameters>;
-    ollamaParameters?: Partial<ChatRequest>;
+    geminiParameters?: any;
+    ollamaParameters?: any;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
@@ -515,86 +511,82 @@ async function askAI(
 
 ### Parameters
 
-- **`prompt`**: - The primary text input for the AI model.
-- **`options`**: - A comprehensive set of options.
-- **`options.systemPrompt`**: - An optional system prompt to provide additional
+- **`prompt`**: The primary text input for the AI model.
+- **`options`**: A comprehensive set of options.
+- **`options.systemPrompt`**: An optional system prompt to provide additional
   context or instructions to the AI model. This can help guide the AI's response
   in a specific direction or tone.
-- **`options.model`**: - The specific AI model to use (e.g.,
-  'gemini-1.5-flash'). Defaults to the `AI_MODEL` environment variable.
-- **`options.apiKey`**: - Your API key for the AI service. Defaults to the
+- **`options.model`**: The specific AI model to use (e.g., 'gemini-1.5-flash').
+  Defaults to the `AI_MODEL` environment variable.
+- **`options.apiKey`**: Your API key for the AI service. Defaults to the
   `AI_KEY` environment variable.
-- **`options.vertex`**: - Set to `true` to use Vertex AI for authentication.
+- **`options.vertex`**: Set to `true` to use Vertex AI for authentication.
   Auto-enables if `AI_PROJECT` and `AI_LOCATION` are set.
-- **`options.project`**: - Your Google Cloud project ID. Defaults to the
+- **`options.project`**: Your Google Cloud project ID. Defaults to the
   `AI_PROJECT` environment variable.
-- **`options.location`**: - The Google Cloud location for your project. Defaults
+- **`options.location`**: The Google Cloud location for your project. Defaults
   to the `AI_LOCATION` environment variable.
-- **`options.ollama`**: - Set to `true` to use a local Ollama model. Defaults to
+- **`options.ollama`**: Set to `true` to use a local Ollama model. Defaults to
   the `OLLAMA` environment variable. If you want your Ollama instance to be
   used, you can pass it here too.
-- **`options.webSearch`**: - (Gemini only) If `true`, enables web search
-  grounding for the AI's responses. Be careful of extra costs. Defaults to
-  `false`.
-- **`options.HTMLFrom`**: - A URL or an array of URLs to scrape HTML content
-  from. The content is appended to the prompt.
-- **`options.screenshotFrom`**: - A URL or an array of URLs to take a screenshot
+- **`options.webSearch`**: (Gemini only) If `true`, enables web search grounding
+  for the AI's responses. Be careful of extra costs. Defaults to `false`.
+- **`options.HTMLFrom`**: A URL or an array of URLs to scrape HTML content from.
+  The content is appended to the prompt.
+- **`options.screenshotFrom`**: A URL or an array of URLs to take a screenshot
   from for analysis.
-- **`options.image`**: - A path or GCS URL (or an array of them) to an image
-  file.
-- **`options.video`**: - A path or GCS URL (or an array of them) to a video
-  file.
-- **`options.audio`**: - A path or GCS URL (or an array of them) to an audio
-  file.
-- **`options.pdf`**: - A path or GCS URL (or an array of them) to a PDF file.
-- **`options.text`**: - A path or GCS URL (or an array of them) to a text file.
-- **`options.returnJson`**: - If `true`, instructs the AI to return a JSON
-  object. Defaults to `false`.
-- **`options.parseJson`**: - If `true`, automatically parses the AI's response
-  as JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
-- **`options.schemaJson`**: - A Zod JSON schema object to enforce structured
+- **`options.image`**: A path or GCS URL (or an array of them) to an image file.
+- **`options.video`**: A path or GCS URL (or an array of them) to a video file.
+- **`options.audio`**: A path or GCS URL (or an array of them) to an audio file.
+- **`options.pdf`**: A path or GCS URL (or an array of them) to a PDF file.
+- **`options.text`**: A path or GCS URL (or an array of them) to a text file.
+- **`options.returnJson`**: If `true`, instructs the AI to return a JSON object.
+  Defaults to `false`.
+- **`options.parseJson`**: If `true`, automatically parses the AI's response as
+  JSON. Defaults to `true` if `returnJson` is `true`, otherwise `false`.
+- **`options.schemaJson`**: A Zod JSON schema object to enforce structured
   output. When provided, the AI will return data that conforms to the specified
   schema. Automatically enables `returnJson` and `parseJson`.
-- **`options.cache`**: - If `true`, caches the response locally in a
+- **`options.cache`**: If `true`, caches the response locally in a
   `.journalism-cache` directory. Defaults to `false`.
-- **`options.verbose`**: - If `true`, enables detailed logging, including token
+- **`options.verbose`**: If `true`, enables detailed logging, including token
   usage and estimated costs. Defaults to `false`.
-- **`options.clean`**: - A function to process and clean the AI's response
-  before it is returned or tested. This function is called after JSON parsing
-  (if `parseJson` is `true`). The response parameter will be the parsed JSON
-  object if `parseJson` is true, or a string otherwise.
-- **`options.test`**: - A function or an array of functions to validate the AI's
+- **`options.clean`**: A function to process and clean the AI's response before
+  it is returned or tested. This function is called after JSON parsing (if
+  `parseJson` is `true`). The response parameter will be the parsed JSON object
+  if `parseJson` is true, or a string otherwise.
+- **`options.test`**: A function or an array of functions to validate the AI's
   response before it's returned.
-- **`options.contextWindow`**: - An option to specify the context window size
-  for Ollama models. By default, Ollama sets this depending on the model, which
-  can be lower than the actual maximum context window size of the model.
-- **`options.thinkingBudget`**: - Sets the reasoning token budget: 0 to disable
+- **`options.contextWindow`**: An option to specify the context window size for
+  Ollama models. By default, Ollama sets this depending on the model, which can
+  be lower than the actual maximum context window size of the model.
+- **`options.thinkingBudget`**: Sets the reasoning token budget: 0 to disable
   (default, though some models may reason regardless), -1 for a dynamic budget,
   or > 0 for a fixed budget. For Ollama models, any non-zero value simply
   enables reasoning, ignoring the specific budget amount. Note: `thinkingLevel`
   takes precedence over `thinkingBudget` if both are provided.
-- **`options.thinkingLevel`**: - Sets the thinking level for reasoning:
-  "minimal", "low", "medium", or "high", which some models expect instead of
+- **`options.thinkingLevel`**: Sets the thinking level for reasoning: "minimal",
+  "low", "medium", or "high", which some models expect instead of
   `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided.
   For Ollama models, any value enables reasoning.
-- **`options.includeThoughts`**: - If `true`, includes the AI's reasoning
-  thoughts in the output when using a thinking budget or thinking level.
-  Defaults to `false`.
-- **`options.temperature`**: - Sets the temperature for response generation,
+- **`options.includeThoughts`**: If `true`, includes the AI's reasoning thoughts
+  in the output when using a thinking budget or thinking level. Defaults to
+  `false`.
+- **`options.temperature`**: Sets the temperature for response generation,
   controlling the randomness of the output. A value of 0 (default) makes the
   output more deterministic, while higher values (e.g., 0.7) increase creativity
   and variability.`.
-- **`options.detailedResponse`**: - If `true`, returns an object containing both
+- **`options.detailedResponse`**: If `true`, returns an object containing both
   the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
-- **`options.geminiParameters`**: - Additional parameters to pass to the Gemini
+- **`options.geminiParameters`**: Additional parameters to pass to the Gemini
   `generateContentStream` method. These will be merged with the default
   parameters, allowing you to override or extend the configuration (e.g., custom
   safety settings, generation config, system instructions).
-- **`options.ollamaParameters`**: - Additional parameters to pass to the Ollama
+- **`options.ollamaParameters`**: Additional parameters to pass to the Ollama
   `chat` method. These will be merged with the default parameters, allowing you
   to override or extend the configuration (e.g., custom options, keep_alive
   settings).
-- **`options.metrics`**: - An object to track cumulative metrics across multiple
+- **`options.metrics`**: An object to track cumulative metrics across multiple
   AI requests. Pass an object with `totalCost`, `totalInputTokens`,
   `totalOutputTokens`, and `totalRequests` properties (all initialized to 0).
   The function will update these values after each request. Note: `totalCost` is
@@ -875,25 +867,25 @@ async function askAIPool(
 
 ### Parameters
 
-- **`requests`**: - An array of request objects to process.
-- **`requests[].id`**: - An optional identifier for the request, useful for
+- **`requests`**: An array of request objects to process.
+- **`requests[].id`**: An optional identifier for the request, useful for
   matching results back to inputs.
-- **`requests[].prompt`**: - The primary text input for the AI model.
-- **`requests[].options`**: - Options passed to {@link askAI} for each
-  individual request. See {@link askAI} for the full list of available options.
-- **`poolSize`**: - The number of concurrent workers processing requests.
-- **`poolOptions`**: - Configuration for the pool execution.
-- **`poolOptions.logProgress`**: - If `true`, logs progress to the console after
+- **`requests[].prompt`**: The primary text input for the AI model.
+- **`requests[].options`**: Options passed to {@link askAI} for each individual
+  request. See {@link askAI} for the full list of available options.
+- **`poolSize`**: The number of concurrent workers processing requests.
+- **`poolOptions`**: Configuration for the pool execution.
+- **`poolOptions.logProgress`**: If `true`, logs progress to the console after
   each completed or failed request. Defaults to `false`.
-- **`poolOptions.retry`**: - The maximum number of retry attempts for a failed
+- **`poolOptions.retry`**: The maximum number of retry attempts for a failed
   request. Defaults to `0` (no retries).
-- **`poolOptions.retryCheck`**: - A function that receives the error and returns
+- **`poolOptions.retryCheck`**: A function that receives the error and returns
   whether the request should be retried. If not provided, all failed requests
   are retried up to the `retry` limit.
-- **`poolOptions.minRequestDurationMs`**: - A minimum duration in milliseconds
-  for each request. If a request completes faster, the worker will wait before
+- **`poolOptions.minRequestDurationMs`**: A minimum duration in milliseconds for
+  each request. If a request completes faster, the worker will wait before
   picking up the next one. Useful for rate limiting.
-- **`poolOptions.metrics`**: - An object to track cumulative metrics across all
+- **`poolOptions.metrics`**: An object to track cumulative metrics across all
   requests in the pool. Pass an object with `totalCost`, `totalInputTokens`,
   `totalOutputTokens`, and `totalRequests` properties (all initialized to 0).
 
@@ -1072,7 +1064,7 @@ async function getEmbedding(
     project?: string;
     location?: string;
     cache?: boolean;
-    ollama?: boolean | Ollama;
+    ollama?: boolean | any;
     verbose?: boolean;
     contextWindow?: number;
   },
@@ -1101,9 +1093,9 @@ async function getEmbedding(
   instance to be used, you can pass it here too.
 - **`options.verbose`**: If `true`, logs additional information such as
   execution time and the truncated input text. Defaults to `false`.
-- **`options.contextWindow`**: - An option to specify the context window size
-  for Ollama models. By default, Ollama sets this depending on the model, which
-  can be lower than the actual maximum context window size of the model.
+- **`options.contextWindow`**: An option to specify the context window size for
+  Ollama models. By default, Ollama sets this depending on the model, which can
+  be lower than the actual maximum context window size of the model.
 
 ### Returns
 

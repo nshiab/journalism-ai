@@ -69,7 +69,8 @@ export default async function getEmbedding(text: string, options: {
   project?: string;
   location?: string;
   cache?: boolean;
-  ollama?: boolean | Ollama;
+  // deno-lint-ignore no-explicit-any
+  ollama?: boolean | any;
   verbose?: boolean;
   contextWindow?: number;
 } = {}): Promise<number[]> {

@@ -1,5 +1,3 @@
-import type { ChatRequest, Ollama } from "ollama";
-import type { GenerateContentParameters } from "@google/genai";
 import askAI from "./askAI.ts";
 import sleep from "./helpers/sleep.ts";
 import { formatNumber } from "@nshiab/journalism-format";
@@ -16,7 +14,8 @@ export type askAIRequest = {
     vertex?: boolean;
     project?: string;
     location?: string;
-    ollama?: boolean | Ollama;
+    // deno-lint-ignore no-explicit-any
+    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
@@ -38,8 +37,10 @@ export type askAIRequest = {
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     thinkingBudget?: number;
     includeThoughts?: boolean;
-    geminiParameters?: Partial<GenerateContentParameters>;
-    ollamaParameters?: Partial<ChatRequest>;
+    // deno-lint-ignore no-explicit-any
+    geminiParameters?: any;
+    // deno-lint-ignore no-explicit-any
+    ollamaParameters?: any;
   };
 };
 

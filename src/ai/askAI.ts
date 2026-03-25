@@ -314,7 +314,8 @@ export default async function askAI(
     vertex?: boolean;
     project?: string;
     location?: string;
-    ollama?: boolean | Ollama;
+    // deno-lint-ignore no-explicit-any
+    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
@@ -336,8 +337,10 @@ export default async function askAI(
     includeThoughts?: boolean;
     temperature?: number;
     detailedResponse: true;
-    geminiParameters?: Partial<GenerateContentParameters>;
-    ollamaParameters?: Partial<ChatRequest>;
+    // deno-lint-ignore no-explicit-any
+    geminiParameters?: any;
+    // deno-lint-ignore no-explicit-any
+    ollamaParameters?: any;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
@@ -658,7 +661,8 @@ export default async function askAI(
     vertex?: boolean;
     project?: string;
     location?: string;
-    ollama?: boolean | Ollama;
+    // deno-lint-ignore no-explicit-any
+    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
     screenshotFrom?: string | string[];
@@ -680,8 +684,10 @@ export default async function askAI(
     includeThoughts?: boolean;
     temperature?: number;
     detailedResponse?: false;
-    geminiParameters?: Partial<GenerateContentParameters>;
-    ollamaParameters?: Partial<ChatRequest>;
+    // deno-lint-ignore no-explicit-any
+    geminiParameters?: any;
+    // deno-lint-ignore no-explicit-any
+    ollamaParameters?: any;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
