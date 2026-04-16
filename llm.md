@@ -39,7 +39,9 @@ current information and ground its responses in real-time data. Note that this
 feature incurs additional API costs.
 
 Temperature is set at 0 by default to encourage more deterministic responses.
-Safety and content filters are disabled by default for Gemini.
+Safety filters are enabled by default (default is `true`), but they are disabled
+by default when using Vertex AI (default is `false`). Users can always override
+this default with the `safetyEnabled` option.
 
 ### Signature
 
@@ -74,6 +76,7 @@ async function askAI(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
+    safetyEnabled?: boolean;
     detailedResponse: true;
     geminiParameters?: any;
     ollamaParameters?: any;
@@ -170,6 +173,10 @@ async function askAI(
   controlling the randomness of the output. A value of 0 (default) makes the
   output more deterministic, while higher values (e.g., 0.7) increase creativity
   and variability.`.
+- **`options.safetyEnabled`**: Controls whether safety filters are enabled. If
+  set to `true`, filters are active; if `false`, they are disabled. By default,
+  this is `false` when using Vertex AI and `true` otherwise. This setting can be
+  explicitly overridden for any model.
 - **`options.detailedResponse`**: If `true`, returns an object containing both
   the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
 - **`options.geminiParameters`**: Additional parameters to pass to the Gemini
@@ -461,7 +468,9 @@ current information and ground its responses in real-time data. Note that this
 feature incurs additional API costs.
 
 Temperature is set at 0 by default to encourage more deterministic responses.
-Safety and content filters are disabled by default for Gemini.
+Safety filters are enabled by default (default is `true`), but they are disabled
+by default when using Vertex AI (default is `false`). Users can always override
+this default with the `safetyEnabled` option.
 
 ### Signature
 
@@ -496,6 +505,7 @@ async function askAI(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
+    safetyEnabled?: boolean;
     detailedResponse?: false;
     geminiParameters?: any;
     ollamaParameters?: any;
@@ -576,6 +586,10 @@ async function askAI(
   controlling the randomness of the output. A value of 0 (default) makes the
   output more deterministic, while higher values (e.g., 0.7) increase creativity
   and variability.`.
+- **`options.safetyEnabled`**: Controls whether safety filters are enabled. If
+  set to `true`, filters are active; if `false`, they are disabled. By default,
+  this is `false` when using Vertex AI and `true` otherwise. This setting can be
+  explicitly overridden for any model.
 - **`options.detailedResponse`**: If `true`, returns an object containing both
   the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
 - **`options.geminiParameters`**: Additional parameters to pass to the Gemini
