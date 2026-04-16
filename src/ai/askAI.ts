@@ -37,7 +37,7 @@ import { jsonrepair } from "jsonrepair";
  * **Web Search Grounding**:
  * For Gemini models, you can enable web search grounding by setting `webSearch` to `true`. This allows the AI to search the web for current information and ground its responses in real-time data. Note that this feature incurs additional API costs.
  *
- * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini.
+ * Temperature is set at 0 by default to encourage more deterministic responses. Safety filters are enabled by default (default is `true`), but they are disabled by default when using Vertex AI (default is `false`). Users can always override this default with the `safetyEnabled` option.
  *
  * @example
  * ```ts
@@ -296,6 +296,7 @@ import { jsonrepair } from "jsonrepair";
  *   @param options.thinkingLevel - Sets the thinking level for reasoning: "minimal", "low", "medium", or "high", which some models expect instead of `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided. For Ollama models, any value enables reasoning.
  *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget or thinking level. Defaults to `false`.
  *   @param options.temperature - Sets the temperature for response generation, controlling the randomness of the output. A value of 0 (default) makes the output more deterministic, while higher values (e.g., 0.7) increase creativity and variability.`.
+ *   @param options.safetyEnabled - Controls whether safety filters are enabled. If set to `true`, filters are active; if `false`, they are disabled. By default, this is `false` when using Vertex AI and `true` otherwise. This setting can be explicitly overridden for any model.
  *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
  *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
  *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
@@ -336,6 +337,7 @@ export default async function askAI(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
+    safetyEnabled?: boolean;
     detailedResponse: true;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
@@ -384,7 +386,7 @@ export default async function askAI(
  * **Web Search Grounding**:
  * For Gemini models, you can enable web search grounding by setting `webSearch` to `true`. This allows the AI to search the web for current information and ground its responses in real-time data. Note that this feature incurs additional API costs.
  *
- * Temperature is set at 0 by default to encourage more deterministic responses. Safety and content filters are disabled by default for Gemini.
+ * Temperature is set at 0 by default to encourage more deterministic responses. Safety filters are enabled by default (default is `true`), but they are disabled by default when using Vertex AI (default is `false`). Users can always override this default with the `safetyEnabled` option.
  *
  * @example
  * ```ts
@@ -643,6 +645,7 @@ export default async function askAI(
  *   @param options.thinkingLevel - Sets the thinking level for reasoning: "minimal", "low", "medium", or "high", which some models expect instead of `thinkingBudget`. Takes precedence over `thinkingBudget` if both are provided. For Ollama models, any value enables reasoning.
  *   @param options.includeThoughts - If `true`, includes the AI's reasoning thoughts in the output when using a thinking budget or thinking level. Defaults to `false`.
  *   @param options.temperature - Sets the temperature for response generation, controlling the randomness of the output. A value of 0 (default) makes the output more deterministic, while higher values (e.g., 0.7) increase creativity and variability.`.
+ *   @param options.safetyEnabled - Controls whether safety filters are enabled. If set to `true`, filters are active; if `false`, they are disabled. By default, this is `false` when using Vertex AI and `true` otherwise. This setting can be explicitly overridden for any model.
  *   @param options.detailedResponse - If `true`, returns an object containing both the response and metadata (tokens, cost, duration, etc.). Defaults to `false`.
  *   @param options.geminiParameters - Additional parameters to pass to the Gemini `generateContentStream` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom safety settings, generation config, system instructions).
  *   @param options.ollamaParameters - Additional parameters to pass to the Ollama `chat` method. These will be merged with the default parameters, allowing you to override or extend the configuration (e.g., custom options, keep_alive settings).
@@ -683,6 +686,7 @@ export default async function askAI(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
+    safetyEnabled?: boolean;
     detailedResponse?: false;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
@@ -728,6 +732,7 @@ export default async function askAI(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
+    safetyEnabled?: boolean;
     detailedResponse?: boolean;
     geminiParameters?: Partial<GenerateContentParameters>;
     ollamaParameters?: Partial<ChatRequest>;
@@ -1073,28 +1078,33 @@ export default async function askAI(
   // Update the prompt in detailedResponse to reflect what was actually sent
   detailedResponse.prompt = promptToBeSent;
 
-  const safetySettings: SafetySetting[] = [
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
-      threshold: HarmBlockThreshold.BLOCK_NONE,
-    },
-  ];
+  const safetyEnabled = options.safetyEnabled ??
+    (options.vertex ? false : true);
+
+  const safetySettings: SafetySetting[] | undefined = safetyEnabled === false
+    ? [
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+    ]
+    : undefined;
 
   // Just everything here
   const params = {

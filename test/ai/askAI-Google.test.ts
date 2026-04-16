@@ -607,6 +607,12 @@ if (typeof aiKey === "string" && aiKey !== "") {
     });
     assertEquals(true, true);
   });
+  Deno.test("should accept safetyEnabled option", async () => {
+    await askAI("What is the capital of France?", {
+      safetyEnabled: false,
+    });
+    assertEquals(true, true);
+  });
 } else {
   console.log("No AI_PROJECT in process.env");
 }
