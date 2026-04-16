@@ -1150,6 +1150,10 @@ export default async function askAI(
     },
   };
 
+  if (safetyEnabled === false) {
+    delete params.config?.safetySettings;
+  }
+
   let cacheFileJSON;
   let cacheFileText;
   if (options.cache) {
