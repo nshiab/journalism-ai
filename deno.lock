@@ -14,7 +14,6 @@
     "npm:google-spreadsheet@^5.2.0": "5.2.0_google-auth-library@10.6.2",
     "npm:jsonrepair@^3.13.3": "3.13.3",
     "npm:ollama@~0.6.3": "0.6.3",
-    "npm:playwright-chromium@^1.58.2": "1.58.2",
     "npm:zod@^4.3.6": "4.3.6"
   },
   "jsr": {
@@ -588,18 +587,6 @@
     "path-expression-matcher@1.2.0": {
       "integrity": "sha512-DwmPWeFn+tq7TiyJ2CxezCAirXjFxvaiD03npak3cRjlP9+OjTmSy1EpIrEbh+l6JgUundniloMLDQ/6VTdhLQ=="
     },
-    "playwright-chromium@1.58.2": {
-      "integrity": "sha512-SCoQ3hjBs7FfO46CoOtgAUg77BuYwCni1bzQgm47IUyLBTipnGkLxLnaUNRKXvPYO4hAyt8++Z6wVShVnhrzmw==",
-      "dependencies": [
-        "playwright-core"
-      ],
-      "scripts": true,
-      "bin": true
-    },
-    "playwright-core@1.58.2": {
-      "integrity": "sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==",
-      "bin": true
-    },
     "protobufjs@7.5.4": {
       "integrity": "sha512-CvexbZtbov6jW2eXAvLukXjXUW1TzFaivC46BpWc/3BpcCysb5Vffu+B3XHMm8lVEuy2Mm4XGex8hBSg1yapPg==",
       "dependencies": [
@@ -731,7 +718,6 @@
       "npm:@google/genai@^1.46.0",
       "npm:jsonrepair@^3.13.3",
       "npm:ollama@~0.6.3",
-      "npm:playwright-chromium@^1.58.2",
       "npm:zod@^4.3.6"
     ]
   }

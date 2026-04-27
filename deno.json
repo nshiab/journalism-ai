@@ -5,7 +5,7 @@
     ".": "./src/index.ts"
   },
   "tasks": {
-    "all-tests": "deno install --allow-scripts=npm:playwright-chromium && deno fmt --check && deno lint && deno check src/index.ts && deno doc --lint src/index.ts && deno publish --allow-dirty --dry-run && TZ=America/Toronto deno test -A --fail-fast && deno task llm",
+    "all-tests": "deno fmt --check && deno lint && deno check src/index.ts && deno doc --lint src/index.ts && deno publish --allow-dirty --dry-run && TZ=America/Toronto deno test -A --fail-fast && deno task llm",
     "llm": "deno doc --json src/index.ts > docs.json && deno run -A src/generateLlmMd.ts && deno fmt llm.md",
     "test-coverage": "deno test -A --fail-fast --coverage=cov_profile && deno coverage cov_profile",
     "patch-no-tests": "deno run -A src/incrementVersion.ts patch",
@@ -28,7 +28,6 @@
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "jsonrepair": "npm:jsonrepair@^3.13.3",
     "ollama": "npm:ollama@^0.6.3",
-    "playwright-chromium": "npm:playwright-chromium@^1.58.2",
     "zod": "npm:zod@^4.3.6"
   },
   "compilerOptions": {
@@ -43,7 +42,6 @@
     ]
   },
   "allowScripts": [
-    "npm:playwright-chromium@1",
     "npm:protobufjs@7.5.4"
   ]
 }

@@ -14,7 +14,6 @@ import {
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
 import ollama, { type ChatRequest, Ollama } from "ollama";
-import { chromium } from "playwright-chromium";
 import { jsonrepair } from "jsonrepair";
 
 /**
@@ -114,16 +113,6 @@ import { jsonrepair } from "jsonrepair";
  * );
  * console.table(orders);
  *
- * // Analyze a screenshot of a webpage.
- * const specials = await askAI(
- *   `Based on this screenshot of a grocery store flyer, list the products that are on special.`,
- *   {
- *     screenshotFrom: "https://www.metro.ca/circulaire",
- *     returnJson: true,
- *   },
- * );
- * console.table(specials);
- * ```
  * @example
  * ```ts
  * // Analyze a local image file.
@@ -277,8 +266,8 @@ import { jsonrepair } from "jsonrepair";
  *   @param options.location - The Google Cloud location for your project. Defaults to the `AI_LOCATION` environment variable.
  *   @param options.ollama - Set to `true` to use a local Ollama model. Defaults to the `OLLAMA` environment variable. If you want your Ollama instance to be used, you can pass it here too.
  *   @param options.webSearch - (Gemini only) If `true`, enables web search grounding for the AI's responses. Be careful of extra costs. Defaults to `false`.
- *   @param options.HTMLFrom - A URL or an array of URLs to scrape HTML content from. The content is appended to the prompt.
- *   @param options.screenshotFrom - A URL or an array of URLs to take a screenshot from for analysis.
+ *   @param options.HTMLFrom - A URL or an array of URLs to scrape HTML content from. The content is appended to the prompt. JavaScript is not executed.
+ *   @param options.screenshotFrom - (Deprecated) A URL or an array of URLs to take a screenshot from for analysis. This feature has been removed. Use the `image` option instead.
  *   @param options.image - A path or GCS URL (or an array of them) to an image file.
  *   @param options.video - A path or GCS URL (or an array of them) to a video file.
  *   @param options.audio - A path or GCS URL (or an array of them) to an audio file.
@@ -319,6 +308,7 @@ export default async function askAI(
     ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
+    /** @deprecated Use the `image` option instead. */
     screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];
@@ -463,16 +453,6 @@ export default async function askAI(
  * );
  * console.table(orders);
  *
- * // Analyze a screenshot of a webpage.
- * const specials = await askAI(
- *   `Based on this screenshot of a grocery store flyer, list the products that are on special.`,
- *   {
- *     screenshotFrom: "https://www.metro.ca/circulaire",
- *     returnJson: true,
- *   },
- * );
- * console.table(specials);
- * ```
  * @example
  * ```ts
  * // Analyze a local image file.
@@ -626,8 +606,8 @@ export default async function askAI(
  *   @param options.location - The Google Cloud location for your project. Defaults to the `AI_LOCATION` environment variable.
  *   @param options.ollama - Set to `true` to use a local Ollama model. Defaults to the `OLLAMA` environment variable. If you want your Ollama instance to be used, you can pass it here too.
  *   @param options.webSearch - (Gemini only) If `true`, enables web search grounding for the AI's responses. Be careful of extra costs. Defaults to `false`.
- *   @param options.HTMLFrom - A URL or an array of URLs to scrape HTML content from. The content is appended to the prompt.
- *   @param options.screenshotFrom - A URL or an array of URLs to take a screenshot from for analysis.
+ *   @param options.HTMLFrom - A URL or an array of URLs to scrape HTML content from. The content is appended to the prompt. JavaScript is not executed.
+ *   @param options.screenshotFrom - (Deprecated) A URL or an array of URLs to take a screenshot from for analysis. This feature has been removed. Use the `image` option instead.
  *   @param options.image - A path or GCS URL (or an array of them) to an image file.
  *   @param options.video - A path or GCS URL (or an array of them) to a video file.
  *   @param options.audio - A path or GCS URL (or an array of them) to an audio file.
@@ -668,6 +648,7 @@ export default async function askAI(
     ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
+    /** @deprecated Use the `image` option instead. */
     screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];
@@ -714,6 +695,7 @@ export default async function askAI(
     ollama?: boolean | Ollama;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
+    /** @deprecated Use the `image` option instead. */
     screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];
@@ -744,6 +726,11 @@ export default async function askAI(
     };
   } = {},
 ): Promise<unknown> {
+  if (options.screenshotFrom) {
+    throw new Error(
+      "The 'screenshotFrom' option has been removed to reduce dependencies. Please take a screenshot yourself and pass it via the 'image' option.",
+    );
+  }
   const start = Date.now();
   let client;
   const ollamaVar = options.ollama === true ||
@@ -822,6 +809,7 @@ export default async function askAI(
 
   detailedResponse.model = model;
 
+
   if (options.verbose) {
     if (options.systemPrompt) {
       console.log(`\nSystem prompt:`);
@@ -848,25 +836,23 @@ export default async function askAI(
       ? options.HTMLFrom
       : [options.HTMLFrom];
 
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-
     for (const url of urls) {
       try {
         const start = options.verbose ? new Date() : null;
-        await page.goto(url, {
-          waitUntil: "networkidle",
-          timeout: 5000,
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          },
         });
-        const html = await page.locator("body").innerHTML();
+        const fullHtml = await response.text();
+        const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        const html = bodyMatch ? bodyMatch[1] : fullHtml;
+
         promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
         if (start) {
           console.log(
-            `\nRetrieved body HTML from ${url} in ${
-              prettyDuration(
-                start,
-              )
-            }`,
+            `\nRetrieved body HTML from ${url} in ${prettyDuration(start)}`,
           );
         }
       } catch (error: unknown) {
@@ -874,60 +860,6 @@ export default async function askAI(
           `Problem retrieving body HTML from ${url}:`,
           JSON.stringify(error),
         );
-        const html = await page.locator("body").innerHTML();
-        promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
-      }
-    }
-
-    await browser.close();
-  }
-  if (options.screenshotFrom) {
-    const urls = Array.isArray(options.screenshotFrom)
-      ? options.screenshotFrom
-      : [options.screenshotFrom];
-
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-
-    const base64Images: string[] = [];
-
-    for (const url of urls) {
-      try {
-        const start = options.verbose ? new Date() : null;
-        await page.goto(url, {
-          waitUntil: "networkidle",
-          timeout: 5000,
-        });
-        const buffer = await page.screenshot({ fullPage: true, type: "jpeg" });
-        base64Images.push(buffer.toString("base64"));
-        if (start) {
-          console.log(
-            `\nRetrieved screenshot from ${url} in ${
-              prettyDuration(
-                start,
-              )
-            }`,
-          );
-        }
-      } catch (error: unknown) {
-        console.log(
-          `Problem retrieving screenshot from ${url}:`,
-          JSON.stringify(error),
-        );
-        const buffer = await page.screenshot({ fullPage: true, type: "jpeg" });
-        base64Images.push(buffer.toString("base64"));
-      }
-    }
-
-    await browser.close();
-
-    if (ollamaVar) {
-      message.images = base64Images;
-    } else {
-      for (const img of base64Images) {
-        contents.push({
-          inlineData: { data: img, mimeType: "image/jpeg" },
-        });
       }
     }
   }
