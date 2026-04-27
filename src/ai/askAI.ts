@@ -809,7 +809,6 @@ export default async function askAI(
 
   detailedResponse.model = model;
 
-
   if (options.verbose) {
     if (options.systemPrompt) {
       console.log(`\nSystem prompt:`);
