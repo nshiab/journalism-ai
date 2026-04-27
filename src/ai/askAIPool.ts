@@ -18,6 +18,7 @@ export type askAIRequest = {
     ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
+    /** @deprecated Use the `image` option instead. */
     screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];

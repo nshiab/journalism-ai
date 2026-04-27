@@ -1,5 +1,5 @@
 import "@std/dotenv/load";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals, assertRejects } from "jsr:@std/assert";
 import askAI from "../../src/ai/askAI.ts";
 import { existsSync, rmSync } from "node:fs";
 import * as z from "zod";
@@ -366,18 +366,6 @@ if (typeof aiKey === "string" && aiKey !== "") {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should take a screenshot and analyze it", async () => {
-    await askAI(
-      `Tell me which products are on special.`,
-      {
-        screenshotFrom: "https://www.metro.ca/circulaire",
-        verbose: true,
-      },
-    );
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
 
   Deno.test("should analyze an audio file", async () => {
     const audioResponse = await askAI(
@@ -616,3 +604,18 @@ if (typeof aiKey === "string" && aiKey !== "") {
 } else {
   console.log("No AI_PROJECT in process.env");
 }
+
+Deno.test("should throw an error when taking a screenshot", async () => {
+  await assertRejects(
+    () =>
+      askAI(
+        `Tell me which products are on special.`,
+        {
+          screenshotFrom: "https://www.metro.ca/circulaire",
+          verbose: true,
+        },
+      ),
+    Error,
+    "The 'screenshotFrom' option has been removed to reduce dependencies. Please take a screenshot yourself and pass it via the 'image' option.",
+  );
+});
