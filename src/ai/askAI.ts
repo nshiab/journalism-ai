@@ -14,7 +14,6 @@ import {
 import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import crypto from "node:crypto";
 import ollama, { type ChatRequest, Ollama } from "ollama";
-import { jsonrepair } from "jsonrepair";
 
 /**
  * Interacts with a Large Language Model (LLM) to perform a wide range of tasks, from answering questions to analyzing multimedia content. This function serves as a versatile interface to various AI models, including Google's Gemini and local models via Ollama.
@@ -1275,7 +1274,7 @@ export default async function askAI(
   if (options.parseJson) {
     try {
       if (typeof returnedResponse === "string") {
-        returnedResponse = JSON.parse(jsonrepair(returnedResponse));
+        returnedResponse = JSON.parse(returnedResponse);
       }
     } catch (error) {
       const displayResponse = returnedResponse === ""

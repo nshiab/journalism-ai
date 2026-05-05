@@ -4,7 +4,8 @@ Useful TypeScript functions for journalism projects. This library focuses on AI.
 It's part of the [journalism library](https://github.com/nshiab/journalism).
 
 The library is available on [JSR](https://jsr.io/@nshiab/journalism-ai) with its
-[documentation](https://jsr.io/@nshiab/journalism-ai/doc).
+[documentation](https://jsr.io/@nshiab/journalism-ai/doc) and on
+[NPM](https://www.npmjs.com/package/@nshiab/journalism-ai).
 
 The documentation is also available as the markdown file
 [llm.md](https://github.com/nshiab/journalism-ai/blob/main/llm.md), which can be
@@ -25,14 +26,29 @@ journalist and senior data producer for [CBC News](https://www.cbc.ca/news).
 To install the library, you can use the following commands:
 
 ```bash
-# DENO
-deno install jsr:@nshiab/journalism-ai
+# Deno
+deno add jsr:@nshiab/journalism-ai
 
-# NODE.JS
-npx jsr add @nshiab/journalism-ai
+# Node
+npm i @nshiab/journalism-ai
 
-# BUN
-bunx jsr add @nshiab/journalism-ai
+# Bun
+bun add @nshiab/journalism-ai
+```
+
+To quickly set up a data project with essential folders, configurations, and
+documentation for AI agents, you can use
+[@nshiab/setup-data-project](https://github.com/nshiab/setup-data-project).
+
+```bash
+# Deno
+deno run -A jsr:@nshiab/setup-data-project
+
+# Node
+npx @nshiab/setup-data-project
+
+# Bun
+bunx @nshiab/setup-data-project
 ```
 
 If you wish to contribute, please check the

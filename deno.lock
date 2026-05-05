@@ -12,7 +12,6 @@
     "npm:date-fns-tz@^3.2.0": "3.2.0_date-fns@4.1.0",
     "npm:google-auth-library@^10.6.2": "10.6.2",
     "npm:google-spreadsheet@^5.2.0": "5.2.0_google-auth-library@10.6.2",
-    "npm:jsonrepair@^3.13.3": "3.13.3",
     "npm:ollama@~0.6.3": "0.6.3",
     "npm:zod@^4.3.6": "4.3.6"
   },
@@ -497,10 +496,6 @@
         "bignumber.js"
       ]
     },
-    "jsonrepair@3.13.3": {
-      "integrity": "sha512-BTznj0owIt2CBAH/LTo7+1I5pMvl1e1033LRl/HUowlZmJOIhzC0zbX5bxMngLkfT4WnzPP26QnW5wMr2g9tsQ==",
-      "bin": true
-    },
     "jwa@2.0.1": {
       "integrity": "sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==",
       "dependencies": [
@@ -675,10 +670,12 @@
     },
     "uuid@8.3.2": {
       "integrity": "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==",
+      "deprecated": true,
       "bin": true
     },
     "uuid@9.0.1": {
       "integrity": "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==",
+      "deprecated": true,
       "bin": true
     },
     "web-streams-polyfill@3.3.3": {
@@ -716,7 +713,6 @@
       "jsr:@nshiab/journalism-google@^1.0.5",
       "jsr:@std/dotenv@~0.225.6",
       "npm:@google/genai@^1.46.0",
-      "npm:jsonrepair@^3.13.3",
       "npm:ollama@~0.6.3",
       "npm:zod@^4.3.6"
     ]
