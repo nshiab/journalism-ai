@@ -1,14 +1,14 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@nshiab/journalism-format@^1.1.3": "1.1.7",
-    "jsr:@nshiab/journalism-format@^1.1.7": "1.1.7",
-    "jsr:@nshiab/journalism-google@^1.0.7": "1.0.7",
+    "jsr:@nshiab/journalism-format@^1.1.3": "1.1.9",
+    "jsr:@nshiab/journalism-format@^1.1.9": "1.1.9",
+    "jsr:@nshiab/journalism-google@^1.0.10": "1.0.10",
     "jsr:@std/assert@*": "1.0.16",
     "jsr:@std/dotenv@~0.225.6": "0.225.6",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "npm:@google-cloud/storage@^7.19.0": "7.19.0",
-    "npm:@google/genai@^1.52.0": "1.52.0",
+    "npm:@google/genai@^2.0.1": "2.0.1",
     "npm:d3-dsv@^3.0.1": "3.0.1",
     "npm:date-fns-tz@^3.2.0": "3.2.0_date-fns@4.1.0",
     "npm:google-auth-library@^10.6.2": "10.6.2",
@@ -17,15 +17,15 @@
     "npm:zod@^4.4.3": "4.4.3"
   },
   "jsr": {
-    "@nshiab/journalism-format@1.1.7": {
-      "integrity": "e5dd8821f7048acfb55def4c320dc934cf5c2c84f63cd0f72285d97b53c99d2f",
+    "@nshiab/journalism-format@1.1.9": {
+      "integrity": "57614fcd2752f7615ff66874be24039c40b61dbcd4e14ec49b9a7f3ef24b7a58",
       "dependencies": [
         "npm:d3-dsv",
         "npm:date-fns-tz"
       ]
     },
-    "@nshiab/journalism-google@1.0.7": {
-      "integrity": "3182f2b36a3a8cf5ac6faeddc8159b7b99a802863ab9dae76dec87b249e5d007",
+    "@nshiab/journalism-google@1.0.10": {
+      "integrity": "9cf6bfd599635107e21ad3aa748998314e2b4dd68cb622a13dc6038faa92914c",
       "dependencies": [
         "jsr:@nshiab/journalism-format@^1.1.3",
         "npm:@google-cloud/storage",
@@ -81,8 +81,8 @@
         "uuid@8.3.2"
       ]
     },
-    "@google/genai@1.52.0": {
-      "integrity": "sha512-gwSvbpiN/17O9TbsqSsE/OzZcpv5Fo4RQjdngGgogtuB9RsyJ8ZHhX5KjHj1bp5N9snN2eK8LDGXSaWW2hof8Q==",
+    "@google/genai@2.0.1": {
+      "integrity": "sha512-trxxbVePM9J8Cuni5x7+xvApoqb2y6Zk27/wugjT2cuwHOT78nFGdf/Ni29MkDxzWwrj90OQpno1Ana6dm3D2A==",
       "dependencies": [
         "google-auth-library@10.6.2",
         "p-retry",
@@ -134,8 +134,8 @@
     "@types/caseless@0.12.5": {
       "integrity": "sha512-hWtVTC2q7hc7xZ/RLbxapMvDMgUnDvKvMOpKal4DrMyfGBUfB1oKaZlIRr6mJL+If3bAP6sV/QneGzF6tJjZDg=="
     },
-    "@types/node@25.6.0": {
-      "integrity": "sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==",
+    "@types/node@25.6.2": {
+      "integrity": "sha512-sokuT28dxf9JT5Kady1fsXOvI4HVpjZa95NKT5y9PNTIrs2AsobR4GFAA90ZG8M+nxVRLysCXsVj6eGC7Vbrlw==",
       "dependencies": [
         "undici-types"
       ]
@@ -296,10 +296,11 @@
     "extend@3.0.2": {
       "integrity": "sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g=="
     },
-    "fast-xml-builder@1.1.8": {
-      "integrity": "sha512-sDVBc2gg8pSKvcbE8rBmOyjSGQf0AdsbqvHeIOv3D/uYNoV4eCReQXyDF8Pdv8+m1FHazACypSz2hR7O2S1LLw==",
+    "fast-xml-builder@1.2.0": {
+      "integrity": "sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q==",
       "dependencies": [
-        "path-expression-matcher"
+        "path-expression-matcher",
+        "xml-naming"
       ]
     },
     "fast-xml-parser@5.7.3": {
@@ -588,8 +589,8 @@
     "path-expression-matcher@1.5.0": {
       "integrity": "sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ=="
     },
-    "protobufjs@7.5.6": {
-      "integrity": "sha512-M71sTMB146U3u0di3yup8iM+zv8yPRNQVr1KK4tyBitl3qFvEGucq/rGDRShD2rsJhtN02RJaJ7j5X5hmy8SJg==",
+    "protobufjs@7.5.7": {
+      "integrity": "sha512-NGnrxS/nLKUo5nkbVQxlC71sB4hdfImdYIbFeSCidxtwATx0AHRPcANSLd0q5Bb2BkoSWo2iisQhGg5/r+ihbA==",
       "dependencies": [
         "@protobufjs/aspromise",
         "@protobufjs/base64",
@@ -649,8 +650,8 @@
         "safe-buffer"
       ]
     },
-    "strnum@2.2.3": {
-      "integrity": "sha512-oKx6RUCuHfT3oyVjtnrmn19H1SiCqgJSg+54XqURKp5aCMbrXrhLjRN9TjuwMjiYstZ0MzDrHqkGZ5dFTKd+zg=="
+    "strnum@2.3.0": {
+      "integrity": "sha512-ums3KNd42PGyx5xaoVTO1mjU1bH3NpY4vsrVlnv9PNGqQj8wd7rJ6nEypLrJ7z5vxK5RP0yMLo6J/Gsm62DI5Q=="
     },
     "stubs@3.0.0": {
       "integrity": "sha512-PdHt7hHUJKxvTCgbKX9C1V/ftOcjJQgz8BZwNfV5c4B6dcGqlpelTbJ999jBGZ2jYiPAwcX5dP6oBwVlBlUbxw=="
@@ -706,6 +707,9 @@
     "ws@8.20.0": {
       "integrity": "sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA=="
     },
+    "xml-naming@0.1.0": {
+      "integrity": "sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw=="
+    },
     "yocto-queue@0.1.0": {
       "integrity": "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q=="
     },
@@ -715,10 +719,10 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@nshiab/journalism-format@^1.1.7",
-      "jsr:@nshiab/journalism-google@^1.0.7",
+      "jsr:@nshiab/journalism-format@^1.1.9",
+      "jsr:@nshiab/journalism-google@^1.0.10",
       "jsr:@std/dotenv@~0.225.6",
-      "npm:@google/genai@^1.52.0",
+      "npm:@google/genai@^2.0.1",
       "npm:ollama@~0.6.3",
       "npm:zod@^4.4.3"
     ]
