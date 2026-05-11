@@ -1,6 +1,6 @@
 {
   "name": "@nshiab/journalism-ai",
-  "version": "1.2.21",
+  "version": "1.2.22",
   "description": "Useful TypeScript functions for journalism projects. This library focuses on AI.",
   "repository": "https://github.com/nshiab/journalism-ai",
   "license": "MIT",
