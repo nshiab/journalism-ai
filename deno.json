@@ -27,9 +27,9 @@
   },
   "nodeModulesDir": "auto",
   "imports": {
-    "@google/genai": "npm:@google/genai@^1.52.0",
-    "@nshiab/journalism-format": "jsr:@nshiab/journalism-format@^1.1.7",
-    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.7",
+    "@google/genai": "npm:@google/genai@^2.0.1",
+    "@nshiab/journalism-format": "jsr:@nshiab/journalism-format@^1.1.9",
+    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.10",
     "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "ollama": "npm:ollama@^0.6.3",
     "zod": "npm:zod@^4.4.3"

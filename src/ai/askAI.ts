@@ -1341,16 +1341,21 @@ export default async function askAI(
 
     const pricing = [
       {
-        model: "gemini-3-pro",
+        model: "gemini-3.1-pro-preview",
         tiers: [
           { threshold: 200_000, input: 2.00, output: 12.00 },
           { threshold: Infinity, input: 4.00, output: 18.00 },
         ],
       },
       {
-        model: "gemini-3-flash",
+        model: "gemini-3.1-flash-preview",
         input: hasAudio ? 1.00 : 0.50,
         output: 3.00,
+      },
+      {
+        model: "gemini-3.1-flash-lite",
+        input: hasAudio ? 0.50 : 0.25,
+        output: 1.50,
       },
       {
         model: "gemini-3-pro-preview",
