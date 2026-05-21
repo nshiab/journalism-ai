@@ -1341,14 +1341,19 @@ export default async function askAI(
 
     const pricing = [
       {
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3.5-flash",
+        input: 1.50,
+        output: 9.00,
+      },
+      {
+        model: "gemini-3.1-pro",
         tiers: [
           { threshold: 200_000, input: 2.00, output: 12.00 },
           { threshold: Infinity, input: 4.00, output: 18.00 },
         ],
       },
       {
-        model: "gemini-3.1-flash-preview",
+        model: "gemini-3.1-flash",
         input: hasAudio ? 1.00 : 0.50,
         output: 3.00,
       },
@@ -1358,14 +1363,14 @@ export default async function askAI(
         output: 1.50,
       },
       {
-        model: "gemini-3-pro-preview",
+        model: "gemini-3-pro",
         tiers: [
           { threshold: 200_000, input: 2.00, output: 12.00 },
           { threshold: Infinity, input: 4.00, output: 18.00 },
         ],
       },
       {
-        model: "gemini-3-flash-preview",
+        model: "gemini-3-flash",
         input: hasAudio ? 1.00 : 0.50,
         output: 3.00,
       },
@@ -1388,7 +1393,7 @@ export default async function askAI(
       },
       {
         model: "gemini-2.0-flash",
-        input: hasAudio ? 0.70 : 0.10,
+        input: hasAudio ? 0.20 : 0.10,
         output: 0.40,
       },
       {
@@ -1412,11 +1417,13 @@ export default async function askAI(
       },
     ];
 
-    const modelPricing = pricing.find((p) => p.model === model);
+    const modelPricing = pricing.find((p) =>
+      p.model === model.replace("-preview", "")
+    );
     if (!modelPricing) {
       if (options.verbose) {
         console.log(
-          `\nModel ${model} not found in pricing list.`,
+          `\nModel ${model.replace("-preview", "")} not found in pricing list.`,
         );
       }
     } else {
