@@ -92,7 +92,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
       (sum, r) => sum + (r.result.estimatedCost ?? 0),
       0,
     );
-    const totalTokens = results.reduce((sum, r) => sum + r.result.totalTokens, 0);
+    const totalTokens = results.reduce(
+      (sum, r) => sum + r.result.totalTokens,
+      0,
+    );
     console.log("Total cost:", totalCost);
     console.log("Total tokens:", totalTokens);
 

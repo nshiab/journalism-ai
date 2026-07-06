@@ -236,9 +236,7 @@ export default async function askGeminiPool(
             console.log(
               `[askGeminiPool] Request ${index} failed (attempt ${
                 attempt + 1
-              }/${
-                maxRetries + 1
-              }) | Duration: ${durationSec}s | Retrying...`,
+              }/${maxRetries + 1}) | Duration: ${durationSec}s | Retrying...`,
             );
           }
         } else {
