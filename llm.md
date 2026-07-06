@@ -616,6 +616,281 @@ for (const r of results) {
 }
 ```
 
+## askGemini
+
+Interacts with Google's Gemini models to perform a wide range of tasks, from
+answering questions to analysing multimedia content.
+
+**Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
+(Vertex AI) environment variables, or pass credentials directly via options.
+
+**Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+
+**File handling**: local paths and `gs://` GCS URLs are both supported for
+images, audio, video, PDF, and text.
+
+**Web Search Grounding**: set `webSearch: true` to let the model search the web
+in real time (extra API cost).
+
+Temperature defaults to 0 for deterministic responses. Safety filters are on by
+default (`true`) but off when using Vertex AI (`false`); override with
+`safetyEnabled`.
+
+### Signature
+
+```typescript
+async function askGemini(
+  prompt: string,
+  options: {
+    systemPrompt?: string;
+    model?: string;
+    apiKey?: string;
+    vertex?: boolean;
+    project?: string;
+    location?: string;
+    webSearch?: boolean;
+    HTMLFrom?: string | string[];
+    screenshotFrom?: string | string[];
+    image?: string | string[];
+    video?: string | string[];
+    audio?: string | string[];
+    pdf?: string | string[];
+    text?: string | string[];
+    returnJson?: boolean;
+    parseJson?: boolean;
+    schemaJson?: unknown;
+    verbose?: boolean;
+    cache?: boolean;
+    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
+    clean?: (response: unknown) => unknown;
+    thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    includeThoughts?: boolean;
+    temperature?: number;
+    safetyEnabled?: boolean;
+    detailedResponse: true;
+    geminiParameters?: any;
+    metrics?: {
+      totalCost: number;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+      totalRequests: number;
+    };
+  },
+): Promise<GeminiDetailedResponse>;
+```
+
+### Parameters
+
+- **`prompt`**: The primary text prompt.
+- **`options.systemPrompt`**: Optional system prompt.
+- **`options.model`**: Model name; defaults to `AI_MODEL` env var.
+- **`options.apiKey`**: API key; defaults to `AI_KEY` env var.
+- **`options.vertex`**: Use Vertex AI authentication.
+- **`options.project`**: GCP project ID; defaults to `AI_PROJECT` env var.
+- **`options.location`**: GCP location; defaults to `AI_LOCATION` env var.
+- **`options.webSearch`**: Enable web search grounding (extra cost).
+- **`options.HTMLFrom`**: URL(s) whose body HTML is appended to the prompt.
+- **`options.image`**: Path(s) or `gs://` URL(s) to image files.
+- **`options.video`**: Path(s) or `gs://` URL(s) to video files.
+- **`options.audio`**: Path(s) or `gs://` URL(s) to audio files.
+- **`options.pdf`**: Path(s) or `gs://` URL(s) to PDF files.
+- **`options.text`**: Path(s) or `gs://` URL(s) to text files.
+- **`options.returnJson`**: Ask the model to return JSON.
+- **`options.parseJson`**: Auto-parse the JSON response.
+- **`options.schemaJson`**: Zod JSON schema for structured output.
+- **`options.cache`**: Cache the response in `.journalism-cache`.
+- **`options.verbose`**: Log prompt, response, and token usage.
+- **`options.clean`**: Transform the response before returning.
+- **`options.test`**: Assert on the response (throws on failure).
+- **`options.thinkingBudget`**: Reasoning token budget (0 = off, -1 = dynamic).
+- **`options.thinkingLevel`**: Thinking level: "minimal" | "low" | "medium" |
+  "high".
+- **`options.includeThoughts`**: Include reasoning thoughts in output.
+- **`options.temperature`**: Sampling temperature (default 0).
+- **`options.safetyEnabled`**: Override safety filter defaults.
+- **`options.detailedResponse`**: Return metadata alongside the response.
+- **`options.geminiParameters`**: Extra params merged into
+  `generateContentStream`.
+- **`options.metrics`**: Cumulative metrics object updated after each call.
+
+### Examples
+
+```ts
+const capital = await askGemini("What is the capital of France?");
+console.log(capital); // "Paris"
+```
+
+```ts
+// Pass credentials directly.
+const response = await askGemini("What is the capital of France?", {
+  apiKey: "your_api_key",
+  model: "gemini-2.5-flash",
+});
+
+// Vertex AI.
+const vertexResponse = await askGemini("What is the capital of France?", {
+  vertex: true,
+  project: "your_project_id",
+  location: "us-central1",
+});
+```
+
+```ts
+// Web search grounding.
+const factCheck = await askGemini(
+  `Verify: "Renewable energy now accounts for over 30% of global electricity generation."`,
+  { webSearch: true },
+);
+```
+
+```ts
+// Structured JSON output with a Zod schema.
+import * as z from "zod";
+const schema = z.toJSONSchema(
+  z.array(z.object({ name: z.string(), age: z.number() })),
+);
+await askGemini("Give me 10 random people.", {
+  schemaJson: schema,
+  verbose: true,
+});
+```
+
+```ts
+// Analyse a local image.
+const info = await askGemini("Describe this image.", {
+  image: "./photo.jpg",
+  returnJson: true,
+});
+```
+
+```ts
+// Detailed response with token usage and estimated cost.
+const result = await askGemini("What is the capital of France?", {
+  detailedResponse: true,
+});
+console.log(`${result.totalTokens} tokens, $${result.estimatedCost}`);
+```
+
+## askOllama
+
+Interacts with a local Ollama model to perform a wide range of tasks.
+
+Ollama must be running on the machine. Set the `AI_MODEL` environment variable
+or pass `model` directly.
+
+Pass a custom `Ollama` instance via the `ollama` option to target a non-default
+host.
+
+**Limitations vs Gemini**: audio, video, and PDF are not supported. GCS
+(`gs://`) URLs are not supported — use local file paths only.
+
+**Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+
+Temperature defaults to 0 for deterministic responses.
+
+### Signature
+
+```typescript
+async function askOllama(
+  prompt: string,
+  options: {
+    systemPrompt?: string;
+    model?: string;
+    ollama?: any;
+    HTMLFrom?: string | string[];
+    image?: string | string[];
+    text?: string | string[];
+    returnJson?: boolean;
+    parseJson?: boolean;
+    schemaJson?: unknown;
+    verbose?: boolean;
+    cache?: boolean;
+    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
+    clean?: (response: unknown) => unknown;
+    contextWindow?: number;
+    thinkingBudget?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    includeThoughts?: boolean;
+    temperature?: number;
+    detailedResponse: true;
+    ollamaParameters?: any;
+    metrics?: {
+      totalCost: number;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+      totalRequests: number;
+    };
+  },
+): Promise<OllamaDetailedResponse>;
+```
+
+### Parameters
+
+- **`prompt`**: The primary text prompt.
+- **`options.model`**: Model name; defaults to `AI_MODEL` env var.
+- **`options.ollama`**: Custom `Ollama` instance targeting a specific host.
+- **`options.systemPrompt`**: Optional system prompt.
+- **`options.HTMLFrom`**: URL(s) whose body HTML is appended to the prompt.
+- **`options.image`**: Local path(s) to image files.
+- **`options.text`**: Local path(s) to text files.
+- **`options.returnJson`**: Ask the model to return JSON.
+- **`options.parseJson`**: Auto-parse the JSON response.
+- **`options.schemaJson`**: JSON schema for structured output.
+- **`options.cache`**: Cache the response in `.journalism-cache`.
+- **`options.verbose`**: Log prompt, response, and token usage.
+- **`options.clean`**: Transform the response before returning.
+- **`options.test`**: Assert on the response (throws on failure).
+- **`options.contextWindow`**: Override the model's context window size.
+- **`options.thinkingBudget`**: Any non-zero value enables reasoning.
+- **`options.thinkingLevel`**: Any value enables reasoning.
+- **`options.includeThoughts`**: Include reasoning thoughts in output.
+- **`options.temperature`**: Sampling temperature (default 0).
+- **`options.detailedResponse`**: Return metadata alongside the response.
+- **`options.ollamaParameters`**: Extra params merged into `client.chat`.
+- **`options.metrics`**: Cumulative metrics object updated after each call.
+
+### Examples
+
+```ts
+// Assumes OLLAMA=true and AI_MODEL are set in environment variables.
+const capital = await askOllama("What is the capital of France?");
+console.log(capital); // "Paris"
+```
+
+```ts
+// Use a custom Ollama instance.
+import { Ollama } from "ollama";
+const client = new Ollama({ host: "http://127.0.0.1:11434" });
+const result = await askOllama("What is the capital of France?", {
+  ollama: client,
+});
+```
+
+```ts
+// Structured JSON output.
+const result = await askOllama(
+  "What is the capital of France? Return JSON: {country: string, capital: string}",
+  { returnJson: true, verbose: true },
+);
+```
+
+```ts
+// Enable thinking / reasoning.
+const result = await askOllama(
+  "What is 17 * 23?",
+  { thinkingBudget: 1, verbose: true },
+);
+```
+
+```ts
+// Detailed response with token usage.
+const result = await askOllama("What is the capital of France?", {
+  detailedResponse: true,
+});
+console.log(`${result.totalTokens} tokens in ${result.durationMs}ms`);
+```
+
 ## getEmbedding
 
 Generates a numerical embedding (vector representation) for a given text string.
