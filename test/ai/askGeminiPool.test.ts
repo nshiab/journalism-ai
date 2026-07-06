@@ -78,13 +78,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 12);
   });
-  Deno.test("should track metrics", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
+  Deno.test("should accumulate cost and tokens from pool results", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
@@ -92,14 +86,18 @@ if (typeof aiKey === "string" && aiKey !== "") {
         { prompt: "What is the capital of Italy?" },
       ],
       2,
-      { metrics, logProgress: true },
+      { logProgress: true },
     );
-    console.log(results);
-    console.log(metrics);
+    const totalCost = results.reduce(
+      (sum, r) => sum + (r.result.estimatedCost ?? 0),
+      0,
+    );
+    const totalTokens = results.reduce((sum, r) => sum + r.result.totalTokens, 0);
+    console.log("Total cost:", totalCost);
+    console.log("Total tokens:", totalTokens);
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
-    assertEquals(metrics.totalRequests, 3);
   });
   Deno.test("should enforce minimum request duration", async () => {
     const start = Date.now();

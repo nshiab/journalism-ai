@@ -1,7 +1,6 @@
 import askGemini from "./askGemini.ts";
 import type { GeminiDetailedResponse } from "./askGemini.ts";
 import sleep from "./helpers/sleep.ts";
-import { formatNumber } from "@nshiab/journalism-format";
 
 /** A single request object for {@link askGeminiPool}, wrapping a prompt and its options. */
 export type askGeminiRequest = {
@@ -94,30 +93,6 @@ export type askGeminiRequest = {
  *
  * @example
  * ```ts
- * // Track cumulative metrics and enforce a minimum request duration to respect rate limits.
- * const metrics = {
- *   totalCost: 0,
- *   totalInputTokens: 0,
- *   totalOutputTokens: 0,
- *   totalRequests: 0,
- * };
- * const { results } = await askAIPool(
- *   [
- *     { prompt: "What is 2+2?" },
- *     { prompt: "What is 3+3?" },
- *   ],
- *   2,
- *   {
- *     minRequestDurationMs: 1000,
- *     metrics,
- *   },
- * );
- * console.log("Total cost:", metrics.totalCost);
- * console.log("Total requests:", metrics.totalRequests);
- * ```
- *
- * @example
- * ```ts
  * // Use retryCheck to only retry on specific errors.
  * const { results, errors } = await askAIPool(
  *   [
@@ -172,7 +147,6 @@ export type askGeminiRequest = {
  *   @param poolOptions.retry - The maximum number of retry attempts for a failed request. Defaults to `0` (no retries).
  *   @param poolOptions.retryCheck - A function that receives the error and returns whether the request should be retried. If not provided, all failed requests are retried up to the `retry` limit.
  *   @param poolOptions.minRequestDurationMs - A minimum duration in milliseconds for each request. If a request completes faster, the worker will wait before picking up the next one. Useful for rate limiting.
- *   @param poolOptions.metrics - An object to track cumulative metrics across all requests in the pool. Pass an object with `totalCost`, `totalInputTokens`, `totalOutputTokens`, and `totalRequests` properties (all initialized to 0).
  * @returns A Promise that resolves to an object with `results` (successful responses with their index and request) and `errors` (failed requests with their index, request, and error), both sorted by original index.
  *
  * @category AI
@@ -185,12 +159,6 @@ export default async function askGeminiPool(
     retry?: number;
     retryCheck?: (error: unknown) => Promise<boolean> | boolean;
     minRequestDurationMs?: number;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
   } = {},
 ): Promise<{
   results: {
@@ -237,7 +205,6 @@ export default async function askGeminiPool(
       try {
         const result = await askGemini(req.prompt, {
           ...req.options,
-          metrics: poolOptions.metrics,
         });
         results.push({ index, request: req, result });
         completed++;
@@ -247,15 +214,8 @@ export default async function askGeminiPool(
           const durationMs = Date.now() - requestStart;
           const durationSec = (durationMs / 1000).toFixed(2);
           const outstanding = requests.length - completed;
-          const metricsInfo = poolOptions.metrics
-            ? ` | Cost so far: $${
-              formatNumber(poolOptions.metrics.totalCost, {
-                significantDigits: 6,
-              })
-            }`
-            : "";
           console.log(
-            `[askGeminiPool] Request ${index} processed | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}${metricsInfo}`,
+            `[askGeminiPool] Request ${index} processed | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}`,
           );
         }
       } catch (error) {
@@ -273,19 +233,12 @@ export default async function askGeminiPool(
           if (poolOptions.logProgress) {
             const durationMs = Date.now() - requestStart;
             const durationSec = (durationMs / 1000).toFixed(2);
-            const metricsInfo = poolOptions.metrics
-              ? ` | Cost so far: $${
-                formatNumber(poolOptions.metrics.totalCost, {
-                  significantDigits: 6,
-                })
-              }`
-              : "";
             console.log(
               `[askGeminiPool] Request ${index} failed (attempt ${
                 attempt + 1
               }/${
                 maxRetries + 1
-              }) | Duration: ${durationSec}s | Retrying...${metricsInfo}`,
+              }) | Duration: ${durationSec}s | Retrying...`,
             );
           }
         } else {
@@ -297,17 +250,10 @@ export default async function askGeminiPool(
             const durationMs = Date.now() - requestStart;
             const durationSec = (durationMs / 1000).toFixed(2);
             const outstanding = requests.length - completed;
-            const metricsInfo = poolOptions.metrics
-              ? ` | Cost so far: $${
-                formatNumber(poolOptions.metrics.totalCost, {
-                  significantDigits: 6,
-                })
-              }`
-              : "";
             console.log(
               `[askGeminiPool] Request ${index} failed after ${
                 maxRetries + 1
-              } attempts | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}${metricsInfo}`,
+              } attempts | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}`,
             );
           }
         }

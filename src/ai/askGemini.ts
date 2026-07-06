@@ -133,7 +133,6 @@ export type GeminiDetailedResponse = {
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.safetyEnabled - Override safety filter defaults.
  * @param options.geminiParameters - Extra params merged into `generateContentStream`.
- * @param options.metrics - Cumulative metrics object updated after each call.
  *
  * @category AI
  */
@@ -169,12 +168,6 @@ export default async function askGemini(
     safetyEnabled?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
   } = {},
 ): Promise<GeminiDetailedResponse> {
   if (options.screenshotFrom) {
@@ -694,13 +687,6 @@ export default async function askGemini(
       detailedData.durationMs = durationMs;
       detailedData.thoughts = thoughts;
       detailedData.thoughtsTokenCount = thoughtsTokenCount;
-
-      if (options.metrics) {
-        options.metrics.totalCost += estimatedCost;
-        options.metrics.totalInputTokens += promptTokenCount;
-        options.metrics.totalOutputTokens += outputTokenCount;
-        options.metrics.totalRequests += 1;
-      }
 
       if (options.verbose) {
         console.log(

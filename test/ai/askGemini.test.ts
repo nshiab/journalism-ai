@@ -62,60 +62,15 @@ if (typeof aiKey === "string" && aiKey !== "") {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should process multiple prompts with metrics option whith verbose false", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-    const result = await askGemini("What is the capital of France?", {
-      verbose: false,
-      metrics,
-    });
-    console.log(result);
-    console.log(metrics);
-    const result2 = await askGemini("What is the capital of Canada?", {
-      verbose: false,
-      metrics,
-    });
-    console.log(result2);
-    console.log(metrics);
-    const result3 = await askGemini("What is the capital of Spain?", {
-      verbose: false,
-      metrics,
-    });
-    console.log(result3);
-    console.log(metrics);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should process multiple prompts with metrics option whith verbose true", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-    const result = await askGemini("What is the capital of France?", {
-      verbose: true,
-      metrics,
-    });
-    console.log(result);
-    console.log(metrics);
-    const result2 = await askGemini("What is the capital of Canada?", {
-      verbose: true,
-      metrics,
-    });
-    console.log(result2);
-    console.log(metrics);
-    const result3 = await askGemini("What is the capital of Spain?", {
-      verbose: true,
-      metrics,
-    });
-    console.log(result3);
-    console.log(metrics);
+  Deno.test("should accumulate cost and tokens across multiple calls", async () => {
+    const r1 = await askGemini("What is the capital of France?");
+    const r2 = await askGemini("What is the capital of Canada?");
+    const r3 = await askGemini("What is the capital of Spain?");
+    const totalCost = (r1.estimatedCost ?? 0) + (r2.estimatedCost ?? 0) +
+      (r3.estimatedCost ?? 0);
+    const totalTokens = r1.totalTokens + r2.totalTokens + r3.totalTokens;
+    console.log("Total cost:", totalCost);
+    console.log("Total tokens:", totalTokens);
 
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);

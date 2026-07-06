@@ -98,7 +98,6 @@ export type OllamaDetailedResponse = {
  * @param options.includeThoughts - Include reasoning thoughts in output.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
- * @param options.metrics - Cumulative metrics object updated after each call.
  *
  * @category AI
  */
@@ -124,12 +123,6 @@ export default async function askOllama(
     includeThoughts?: boolean;
     temperature?: number;
     ollamaParameters?: Partial<ChatRequest>;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
   } = {},
 ): Promise<OllamaDetailedResponse> {
   const start = Date.now();
@@ -375,12 +368,6 @@ export default async function askOllama(
     detailedData.tokensPerSecond = tokensPerSecond;
     detailedData.durationMs = durationMs;
     detailedData.thoughts = thoughts;
-
-    if (options.metrics) {
-      options.metrics.totalInputTokens += promptTokenCount;
-      options.metrics.totalOutputTokens += outputTokenCount;
-      options.metrics.totalRequests += 1;
-    }
 
     if (options.verbose) {
       console.log(
