@@ -9,7 +9,6 @@ export type askGeminiRequest = {
   options?: {
     systemPrompt?: string;
     model?: string;
-    temperature?: number;
     apiKey?: string;
     vertex?: boolean;
     project?: string;
@@ -31,7 +30,6 @@ export type askGeminiRequest = {
       | ((response: unknown) => void)[];
     clean?: (response: unknown) => unknown;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    thinkingBudget?: number;
     includeThoughts?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;

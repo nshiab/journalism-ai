@@ -46,9 +46,8 @@ export type GeminiDetailedResponse = {
  * **Web Search Grounding**: set `webSearch: true` to let the model search the
  * web in real time (extra API cost).
  *
- * Temperature defaults to 0 for deterministic responses. Safety filters are
- * on by default (`true`) but off when using Vertex AI (`false`); override
- * with `safetyEnabled`.
+ * Safety filters are on by default (`true`) but off when using Vertex AI
+ * (`false`); override with `safetyEnabled`.
  *
  * @example
  * ```ts
@@ -61,7 +60,7 @@ export type GeminiDetailedResponse = {
  * // Pass credentials directly.
  * const response = await askGemini("What is the capital of France?", {
  *   apiKey: "your_api_key",
- *   model: "gemini-2.5-flash",
+ *   model: "gemini-3.5-flash",
  * });
  *
  * // Vertex AI.
@@ -127,10 +126,8 @@ export type GeminiDetailedResponse = {
  * @param options.verbose - Log prompt, response, and token usage.
  * @param options.clean - Transform the response before returning.
  * @param options.test - Assert on the response (throws on failure).
- * @param options.thinkingBudget - Reasoning token budget (0 = off, -1 = dynamic).
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
  * @param options.includeThoughts - Include reasoning thoughts in output.
- * @param options.temperature - Sampling temperature (default 0).
  * @param options.safetyEnabled - Override safety filter defaults.
  * @param options.geminiParameters - Extra params merged into `generateContentStream`.
  *
@@ -161,10 +158,8 @@ export default async function askGemini(
     cache?: boolean;
     test?: ((response: unknown) => void) | ((response: unknown) => void)[];
     clean?: (response: unknown) => unknown;
-    thinkingBudget?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
-    temperature?: number;
     safetyEnabled?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
@@ -407,7 +402,6 @@ export default async function askGemini(
     config: {
       systemInstruction: options.systemPrompt,
       safetySettings,
-      temperature: options.temperature ?? 0,
       responseMimeType: options.returnJson ? "application/json" : undefined,
       responseJsonSchema: options.schemaJson,
       thinkingConfig: options.thinkingLevel
@@ -417,15 +411,7 @@ export default async function askGemini(
           ],
           includeThoughts: options.includeThoughts,
         }
-        : typeof options.thinkingBudget === "number"
-        ? {
-          thinkingBudget: options.thinkingBudget ?? 0,
-          includeThoughts: options.includeThoughts,
-        }
-        : {
-          thinkingBudget: 0,
-          includeThoughts: options.includeThoughts,
-        },
+        : undefined,
       tools: options.webSearch ? [{ googleSearch: {} }] : undefined,
     },
   };
@@ -568,47 +554,6 @@ export default async function askGemini(
         model: "gemini-3-flash",
         input: hasAudio ? 1.00 : 0.50,
         output: 3.00,
-      },
-      {
-        model: "gemini-2.5-pro",
-        tiers: [
-          { threshold: 200_000, input: 1.25, output: 10.00 },
-          { threshold: Infinity, input: 2.50, output: 15.00 },
-        ],
-      },
-      {
-        model: "gemini-2.5-flash",
-        input: hasAudio ? 1.00 : 0.30,
-        output: 2.50,
-      },
-      {
-        model: "gemini-2.5-flash-lite",
-        input: hasAudio ? 0.30 : 0.10,
-        output: 0.40,
-      },
-      {
-        model: "gemini-2.0-flash",
-        input: hasAudio ? 0.20 : 0.10,
-        output: 0.40,
-      },
-      {
-        model: "gemini-2.0-flash-lite",
-        input: 0.075,
-        output: 0.30,
-      },
-      {
-        model: "gemini-1.5-pro",
-        tiers: [
-          { threshold: 128_000, input: 1.25, output: 5.00 },
-          { threshold: Infinity, input: 2.50, output: 10.00 },
-        ],
-      },
-      {
-        model: "gemini-1.5-flash",
-        tiers: [
-          { threshold: 128_000, input: 0.075, output: 0.30 },
-          { threshold: Infinity, input: 0.15, output: 0.60 },
-        ],
       },
     ];
 
