@@ -584,11 +584,10 @@ export default async function askGemini(
   let cacheFileJSON = "";
   let cacheFileText = "";
   if (options.cache) {
-    const cacheFiles = initCache(params, options.clean);
+    const cacheFiles = initCache(params, options.clean, options.test);
     cacheFileJSON = cacheFiles.cacheFileJSON;
     cacheFileText = cacheFiles.cacheFileText;
     const hit = readCache(cacheFileJSON, cacheFileText, {
-      test: options.test,
       verbose: options.verbose,
     });
     if (hit !== null) {

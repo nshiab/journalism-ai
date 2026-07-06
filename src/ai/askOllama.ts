@@ -387,7 +387,6 @@ export default async function askOllama(
     cacheFileJSON = cacheFiles.cacheFileJSON;
     cacheFileText = cacheFiles.cacheFileText;
     const hit = readCache(cacheFileJSON, cacheFileText, {
-      test: options.test,
       verbose: options.verbose,
     });
     if (hit !== null) {
