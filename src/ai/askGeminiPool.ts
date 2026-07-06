@@ -46,7 +46,7 @@ export type askGeminiRequest = {
  * @example
  * ```ts
  * // Basic usage: Process a batch of prompts with a pool of 5 concurrent workers.
- * const { results, errors } = await askAIPool(
+ * const { results, errors } = await askGeminiPool(
  *   [
  *     { prompt: "What is the capital of France?" },
  *     { prompt: "What is the capital of Germany?" },
@@ -55,14 +55,14 @@ export type askGeminiRequest = {
  *   5,
  * );
  * for (const r of results) {
- *   console.log(r.result);
+ *   console.log(r.result.response);
  * }
  * ```
  *
  * @example
  * ```ts
  * // Use an id to easily identify each request in the results.
- * const { results, errors } = await askAIPool(
+ * const { results, errors } = await askGeminiPool(
  *   [
  *     { id: "france", prompt: "What is the capital of France?" },
  *     { id: "germany", prompt: "What is the capital of Germany?" },
@@ -70,14 +70,14 @@ export type askGeminiRequest = {
  *   2,
  * );
  * for (const r of results) {
- *   console.log(r.request.id, r.result);
+ *   console.log(r.request.id, r.result.response);
  * }
  * ```
  *
  * @example
  * ```ts
  * // Enable progress logging and retries.
- * const { results, errors } = await askAIPool(
+ * const { results, errors } = await askGeminiPool(
  *   [
  *     { prompt: "Summarize this article.", options: { text: "./article1.txt", returnJson: true } },
  *     { prompt: "Summarize this article.", options: { text: "./article2.txt", returnJson: true } },
@@ -94,7 +94,7 @@ export type askGeminiRequest = {
  * @example
  * ```ts
  * // Use retryCheck to only retry on specific errors.
- * const { results, errors } = await askAIPool(
+ * const { results, errors } = await askGeminiPool(
  *   [
  *     { prompt: "Analyze this image.", options: { image: "./photo.jpg", returnJson: true } },
  *   ],
@@ -124,16 +124,16 @@ export type askGeminiRequest = {
  *   }),
  * );
  *
- * const { results, errors } = await askAIPool(
+ * const { results, errors } = await askGeminiPool(
  *   [
  *     { prompt: "Give me 5 characters from Harry Potter.", options: { schemaJson: schema } },
  *     { prompt: "Give me 5 characters from Lord of the Rings.", options: { schemaJson: schema } },
  *   ],
  *   2,
  * );
- * // Each result will conform to the specified schema
+ * // Each result.response will conform to the specified schema
  * for (const r of results) {
- *   console.log(r.result); // { people: [{ name: "...", age: ..., gender: "..." }, ...] }
+ *   console.log(r.result.response); // { people: [{ name: "...", age: ..., gender: "..." }, ...] }
  * }
  * ```
  *

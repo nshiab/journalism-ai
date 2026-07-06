@@ -52,8 +52,8 @@ export type GeminiDetailedResponse = {
  *
  * @example
  * ```ts
- * const capital = await askGemini("What is the capital of France?");
- * console.log(capital); // "Paris"
+ * const result = await askGemini("What is the capital of France?");
+ * console.log(result.response); // "Paris"
  * ```
  *
  * @example

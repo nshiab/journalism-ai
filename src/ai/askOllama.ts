@@ -39,9 +39,9 @@ export type OllamaDetailedResponse = {
  *
  * @example
  * ```ts
- * // Assumes OLLAMA=true and AI_MODEL are set in environment variables.
- * const capital = await askOllama("What is the capital of France?");
- * console.log(capital); // "Paris"
+ * // Assumes AI_MODEL is set in environment variables.
+ * const result = await askOllama("What is the capital of France?");
+ * console.log(result.response); // "Paris"
  * ```
  *
  * @example
