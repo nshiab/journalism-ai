@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import process from "node:process";
-import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import ollama, { type ChatRequest, Ollama } from "ollama";
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
@@ -8,7 +7,6 @@ import { processResponse } from "./helpers/processResponse.ts";
 /** The detailed response shape returned by {@link askOllama}. */
 export type OllamaDetailedResponse = {
   response: unknown;
-  rawResponse: unknown;
   fromCache: boolean;
   prompt: string;
   promptTokenCount: number;
@@ -55,9 +53,11 @@ export type OllamaDetailedResponse = {
  * @example
  * ```ts
  * // Structured JSON output.
+ * import * as z from "zod";
+ * const schema = z.toJSONSchema(z.object({ country: z.string(), capital: z.string() }));
  * const result = await askOllama(
- *   "What is the capital of France? Return JSON: {country: string, capital: string}",
- *   { returnJson: true, verbose: true },
+ *   "What is the capital of France?",
+ *   { schemaJson: schema },
  * );
  * ```
  *
@@ -66,7 +66,7 @@ export type OllamaDetailedResponse = {
  * // Enable thinking / reasoning.
  * const result = await askOllama(
  *   "What is 17 * 23?",
- *   { thinkingBudget: 1, verbose: true },
+ *   { thinkingBudget: 1 },
  * );
  * ```
  *
@@ -85,17 +85,11 @@ export type OllamaDetailedResponse = {
  * @param options.HTMLFrom - URL(s) whose body HTML is appended to the prompt.
  * @param options.image - Local path(s) to image files.
  * @param options.text - Local path(s) to text files.
- * @param options.returnJson - Ask the model to return JSON.
- * @param options.parseJson - Auto-parse the JSON response.
  * @param options.schemaJson - JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`.
- * @param options.verbose - Log prompt, response, and token usage.
- * @param options.clean - Transform the response before returning.
- * @param options.test - Assert on the response (throws on failure).
  * @param options.contextWindow - Override the model's context window size.
  * @param options.thinkingBudget - Any non-zero value enables reasoning.
  * @param options.thinkingLevel - Any value enables reasoning.
- * @param options.includeThoughts - Include reasoning thoughts in output.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
  *
@@ -110,33 +104,43 @@ export default async function askOllama(
     HTMLFrom?: string | string[];
     image?: string | string[];
     text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
     schemaJson?: unknown;
-    verbose?: boolean;
     cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
     contextWindow?: number;
     thinkingBudget?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
     temperature?: number;
     ollamaParameters?: Partial<ChatRequest>;
   } = {},
-): Promise<OllamaDetailedResponse> {
+): Promise<{
+  /** The model's response, parsed as a JS object when `schemaJson` was provided, otherwise a plain string. */
+  response: unknown;
+  /** `true` when the result was served from the local file cache. */
+  fromCache: boolean;
+  /** The full prompt sent to the model (including any appended file/HTML content). */
+  prompt: string;
+  /** Number of tokens in the prompt. */
+  promptTokenCount: number;
+  /** Number of tokens in the model's response. */
+  outputTokenCount: number;
+  /** Total tokens (prompt + output). */
+  totalTokens: number;
+  /** Tokens processed per second. */
+  tokensPerSecond: number;
+  /** Wall-clock time of the API call in milliseconds. */
+  durationMs: number;
+  /** The model name used for this call. */
+  model: string;
+  /** The model's internal reasoning text (only populated when thinking is enabled). */
+  thoughts: string;
+  /** Number of tokens used for internal reasoning (not reported by Ollama; always 0). */
+  thoughtsTokenCount: number;
+}> {
   const start = Date.now();
-
-  const defaults = {
-    returnJson: options.returnJson || options.schemaJson ? true : false,
-    parseJson: options.returnJson || options.schemaJson ? true : false,
-  };
-  options = { ...defaults, ...options };
 
   const detailedData: OllamaDetailedResponse = {
     response: undefined,
     prompt: prompt,
-    rawResponse: undefined,
     fromCache: false,
     model: "",
     promptTokenCount: 0,
@@ -159,19 +163,6 @@ export default async function askOllama(
 
   detailedData.model = model;
 
-  if (options.verbose) {
-    if (options.systemPrompt) {
-      console.log(`\nSystem prompt:`);
-      console.log(options.systemPrompt);
-    }
-    console.log(`\nPrompt to ${model}:`);
-    console.log(prompt);
-    if (options.schemaJson) {
-      console.log(`JSON schema for response:`);
-      console.log(JSON.stringify(options.schemaJson, null, 2));
-    }
-  }
-
   // Build message
   let promptToBeSent = prompt;
   const message: { role: string; content: string; images?: string[] } = {
@@ -185,7 +176,6 @@ export default async function askOllama(
       : [options.HTMLFrom];
     for (const url of urls) {
       try {
-        const fetchStart = options.verbose ? new Date() : null;
         const res = await fetch(url, {
           headers: {
             "User-Agent":
@@ -196,13 +186,6 @@ export default async function askOllama(
         const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const html = bodyMatch ? bodyMatch[1] : fullHtml;
         promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
-        if (fetchStart) {
-          console.log(
-            `\nRetrieved body HTML from ${url} in ${
-              prettyDuration(fetchStart)
-            }`,
-          );
-        }
       } catch (error: unknown) {
         console.log(
           `Problem retrieving body HTML from ${url}:`,
@@ -240,11 +223,7 @@ export default async function askOllama(
 
   detailedData.prompt = promptToBeSent;
 
-  const format = options.schemaJson
-    ? options.schemaJson
-    : options.returnJson
-    ? "json"
-    : undefined;
+  const format = options.schemaJson ? options.schemaJson : undefined;
 
   const params = {
     model,
@@ -260,22 +239,16 @@ export default async function askOllama(
   };
 
   // Cache check
-  let cacheFileJSON = "";
-  let cacheFileText = "";
-  if (options.cache) {
-    const cacheFiles = initCache(params, options.clean, options.test);
-    cacheFileJSON = cacheFiles.cacheFileJSON;
-    cacheFileText = cacheFiles.cacheFileText;
-    const hit = readCache(cacheFileJSON, cacheFileText, {
-      verbose: options.verbose,
-    });
+  const cacheFiles = options.cache ? initCache(params) : null;
+  if (cacheFiles) {
+    const hit = readCache(cacheFiles.cacheFile);
     if (hit !== null) {
-      return { ...detailedData, response: hit.response, fromCache: true };
+      return { ...(hit as OllamaDetailedResponse), fromCache: true };
     }
   }
 
   // API call
-  const stream = await client.chat({
+  const result = await client.chat({
     model,
     messages: params.messages,
     format: params.format,
@@ -287,112 +260,36 @@ export default async function askOllama(
       ? "low"
       : options.thinkingLevel ?? (options.thinkingBudget ?? 0) > 0,
     ...(options.ollamaParameters ?? {}),
-    stream: true,
+    stream: false,
   });
 
-  let thoughts = "";
-  let returnedResponse = "";
-  let finalOllamaResponse: {
-    prompt_eval_count: number;
-    eval_count: number;
-  } | null = null;
-
-  try {
-    for await (const chunk of stream) {
-      finalOllamaResponse = chunk;
-
-      if (chunk.message.thinking) {
-        if (options.verbose && !thoughts) {
-          process.stdout.write("\nThoughts:\n");
-        }
-        if (options.verbose) {
-          process.stdout.write(chunk.message.thinking);
-        }
-        thoughts += chunk.message.thinking;
-      } else if (chunk.message.content) {
-        if (options.verbose) {
-          if (!returnedResponse) {
-            process.stdout.write("\nResponse:\n");
-          }
-          process.stdout.write(chunk.message.content);
-        }
-        returnedResponse += chunk.message.content;
-      }
-    }
-  } finally {
-    if (
-      "abort" in stream &&
-      typeof (stream as { abort?: unknown }).abort === "function"
-    ) {
-      (stream as { abort: () => void }).abort();
-    }
-    if (options.verbose) {
-      process.stdout.write("\n");
-    }
-  }
+  const thoughts = result.message.thinking ?? "";
+  const returnedResponse = result.message.content ?? "";
 
   // Post-process
-  const { cleaned, raw } = processResponse(returnedResponse, {
-    parseJson: options.parseJson,
-    clean: options.clean,
-    test: options.test,
-    verbose: options.verbose,
+  const response = processResponse(returnedResponse, {
+    parseJson: !!options.schemaJson,
   });
 
-  // Cache write
-  if (options.cache) {
-    writeCache(
-      cacheFileJSON,
-      cacheFileText,
-      cleaned,
-      options.parseJson ?? false,
-      options.verbose,
-    );
-  }
-
-  detailedData.response = cleaned;
-  detailedData.rawResponse = raw !== cleaned ? raw : undefined;
+  detailedData.response = response;
 
   // Metrics
-  if (finalOllamaResponse) {
-    const promptTokenCount = finalOllamaResponse.prompt_eval_count;
-    const outputTokenCount = finalOllamaResponse.eval_count;
-    const totalTokens = promptTokenCount + outputTokenCount;
-    const durationMs = Date.now() - start;
-    const durationSeconds = durationMs / 1000;
-    const tokensPerSecond = totalTokens / durationSeconds;
+  const promptTokenCount = result.prompt_eval_count ?? 0;
+  const outputTokenCount = result.eval_count ?? 0;
+  const totalTokens = promptTokenCount + outputTokenCount;
+  const durationMs = Date.now() - start;
+  const durationSeconds = durationMs / 1000;
+  const tokensPerSecond = totalTokens / durationSeconds;
 
-    detailedData.promptTokenCount = promptTokenCount;
-    detailedData.outputTokenCount = outputTokenCount;
-    detailedData.totalTokens = totalTokens;
-    detailedData.tokensPerSecond = tokensPerSecond;
-    detailedData.durationMs = durationMs;
-    detailedData.thoughts = thoughts;
+  detailedData.promptTokenCount = promptTokenCount;
+  detailedData.outputTokenCount = outputTokenCount;
+  detailedData.totalTokens = totalTokens;
+  detailedData.tokensPerSecond = tokensPerSecond;
+  detailedData.durationMs = durationMs;
+  detailedData.thoughts = thoughts;
 
-    if (options.verbose) {
-      console.log(
-        `\n\nTokens in:`,
-        formatNumber(detailedData.promptTokenCount),
-        "/",
-        "Tokens out:",
-        formatNumber(detailedData.outputTokenCount),
-        "/",
-        "Thinking tokens:",
-        "N/A",
-        "/",
-        "Tokens per second:",
-        formatNumber(detailedData.tokensPerSecond, {
-          significantDigits: 1,
-        }),
-      );
-    }
-  } else {
-    detailedData.durationMs = Date.now() - start;
-    detailedData.thoughts = thoughts;
-  }
-
-  if (options.verbose) {
-    console.log("Execution time:", prettyDuration(start), "\n");
+  if (cacheFiles) {
+    writeCache(cacheFiles.cacheFile, detailedData);
   }
 
   return detailedData;

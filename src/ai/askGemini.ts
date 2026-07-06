@@ -1,30 +1,26 @@
 import { readFileSync } from "node:fs";
 import process from "node:process";
 import {
-  type Candidate,
   type ContentListUnion,
-  GenerateContentResponse,
   GoogleGenAI,
   HarmBlockThreshold,
   HarmCategory,
   type SafetySetting,
   ThinkingLevel,
 } from "@google/genai";
-import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
 /** The detailed response shape returned by {@link askGemini}. */
 export type GeminiDetailedResponse = {
   response: unknown;
-  rawResponse: unknown;
   fromCache: boolean;
   prompt: string;
   promptTokenCount: number;
   outputTokenCount: number;
   totalTokens: number;
   tokensPerSecond: number;
-  estimatedCost?: number;
+  estimatedCost: number | null;
   durationMs: number;
   model: string;
   thoughts: string;
@@ -85,7 +81,7 @@ export type GeminiDetailedResponse = {
  * // Structured JSON output with a Zod schema.
  * import * as z from "zod";
  * const schema = z.toJSONSchema(z.array(z.object({ name: z.string(), age: z.number() })));
- * await askGemini("Give me 10 random people.", { schemaJson: schema, verbose: true });
+ * await askGemini("Give me 10 random people.", { schemaJson: schema });
  * ```
  *
  * @example
@@ -93,7 +89,6 @@ export type GeminiDetailedResponse = {
  * // Analyse a local image.
  * const info = await askGemini("Describe this image.", {
  *   image: "./photo.jpg",
- *   returnJson: true,
  * });
  * ```
  *
@@ -119,17 +114,11 @@ export type GeminiDetailedResponse = {
  * @param options.audio - Path(s) or `gs://` URL(s) to audio files.
  * @param options.pdf - Path(s) or `gs://` URL(s) to PDF files.
  * @param options.text - Path(s) or `gs://` URL(s) to text files.
- * @param options.returnJson - Ask the model to return JSON.
- * @param options.parseJson - Auto-parse the JSON response.
  * @param options.schemaJson - Zod JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`.
- * @param options.verbose - Log prompt, response, and token usage.
- * @param options.clean - Transform the response before returning.
- * @param options.test - Assert on the response (throws on failure).
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
- * @param options.includeThoughts - Include reasoning thoughts in output.
  * @param options.safetyEnabled - Override safety filter defaults.
- * @param options.geminiParameters - Extra params merged into `generateContentStream`.
+ * @param options.geminiParameters - Extra params merged into `generateContent`.
  *
  * @category AI
  */
@@ -144,51 +133,56 @@ export default async function askGemini(
     location?: string;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
-    /** @deprecated Use the `image` option instead. */
-    screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];
     audio?: string | string[];
     pdf?: string | string[];
     text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
     schemaJson?: unknown;
-    verbose?: boolean;
     cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
     safetyEnabled?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
   } = {},
-): Promise<GeminiDetailedResponse> {
-  if (options.screenshotFrom) {
-    throw new Error(
-      "The 'screenshotFrom' option has been removed to reduce dependencies. Please take a screenshot yourself and pass it via the 'image' option.",
-    );
-  }
-
+): Promise<{
+  /** The model's response, parsed as a JS object when `schemaJson` was provided, otherwise a plain string. */
+  response: unknown;
+  /** `true` when the result was served from the local file cache. */
+  fromCache: boolean;
+  /** The full prompt sent to the model (including any appended file/HTML content). */
+  prompt: string;
+  /** Number of tokens in the prompt. */
+  promptTokenCount: number;
+  /** Number of tokens in the model's response. */
+  outputTokenCount: number;
+  /** Total tokens (prompt + output + thinking). */
+  totalTokens: number;
+  /** Tokens processed per second. */
+  tokensPerSecond: number;
+  /** Estimated cost in USD, or `null` when the model is not in the pricing table. */
+  estimatedCost: number | null;
+  /** Wall-clock time of the API call in milliseconds. */
+  durationMs: number;
+  /** The model name used for this call. */
+  model: string;
+  /** The model's internal reasoning text (only populated when `thinkingLevel` is set). */
+  thoughts: string;
+  /** Number of tokens used for internal reasoning. */
+  thoughtsTokenCount: number;
+}> {
   const start = Date.now();
-
-  const defaults = {
-    returnJson: options.returnJson || options.schemaJson ? true : false,
-    parseJson: options.returnJson || options.schemaJson ? true : false,
-  };
-  options = { ...defaults, ...options };
 
   const detailedData: GeminiDetailedResponse = {
     response: undefined,
     prompt: prompt,
-    rawResponse: undefined,
     fromCache: false,
     model: "",
     promptTokenCount: 0,
     outputTokenCount: 0,
     totalTokens: 0,
     tokensPerSecond: 0,
+    estimatedCost: null,
     durationMs: 0,
     thoughts: "",
     thoughtsTokenCount: 0,
@@ -228,19 +222,6 @@ export default async function askGemini(
 
   detailedData.model = model;
 
-  if (options.verbose) {
-    if (options.systemPrompt) {
-      console.log(`\nSystem prompt:`);
-      console.log(options.systemPrompt);
-    }
-    console.log(`\nPrompt to ${model}:`);
-    console.log(prompt);
-    if (options.schemaJson) {
-      console.log(`JSON schema for response:`);
-      console.log(JSON.stringify(options.schemaJson, null, 2));
-    }
-  }
-
   // Build contents
   const contents: ContentListUnion = [];
   let promptToBeSent = prompt;
@@ -251,7 +232,6 @@ export default async function askGemini(
       : [options.HTMLFrom];
     for (const url of urls) {
       try {
-        const fetchStart = options.verbose ? new Date() : null;
         const res = await fetch(url, {
           headers: {
             "User-Agent":
@@ -262,13 +242,6 @@ export default async function askGemini(
         const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const html = bodyMatch ? bodyMatch[1] : fullHtml;
         promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
-        if (fetchStart) {
-          console.log(
-            `\nRetrieved body HTML from ${url} in ${
-              prettyDuration(fetchStart)
-            }`,
-          );
-        }
       } catch (error: unknown) {
         console.log(
           `Problem retrieving body HTML from ${url}:`,
@@ -402,14 +375,14 @@ export default async function askGemini(
     config: {
       systemInstruction: options.systemPrompt,
       safetySettings,
-      responseMimeType: options.returnJson ? "application/json" : undefined,
+      responseMimeType: options.schemaJson ? "application/json" : undefined,
       responseJsonSchema: options.schemaJson,
       thinkingConfig: options.thinkingLevel
         ? {
           thinkingLevel: ThinkingLevel[
             options.thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
           ],
-          includeThoughts: options.includeThoughts,
+          includeThoughts: true,
         }
         : undefined,
       tools: options.webSearch ? [{ googleSearch: {} }] : undefined,
@@ -421,100 +394,40 @@ export default async function askGemini(
   }
 
   // Cache check
-  let cacheFileJSON = "";
-  let cacheFileText = "";
-  if (options.cache) {
-    const cacheFiles = initCache(params, options.clean, options.test);
-    cacheFileJSON = cacheFiles.cacheFileJSON;
-    cacheFileText = cacheFiles.cacheFileText;
-    const hit = readCache(cacheFileJSON, cacheFileText, {
-      verbose: options.verbose,
-    });
+  const cacheFiles = options.cache ? initCache(params) : null;
+  if (cacheFiles) {
+    const hit = readCache(cacheFiles.cacheFile);
     if (hit !== null) {
-      return { ...detailedData, response: hit.response, fromCache: true };
+      return { ...(hit as GeminiDetailedResponse), fromCache: true };
     }
   }
 
   // API call
-  const stream = await client.models.generateContentStream({
+  const result = await client.models.generateContent({
     ...params,
     ...(options.geminiParameters ?? {}),
   });
 
   let thoughts = "";
   let returnedResponse = "";
-  let finalUsageMetadata: {
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    thoughtsTokenCount?: number;
-  } | null = null;
+  const finalUsageMetadata = result.usageMetadata ?? null;
 
-  try {
-    for await (const chunk of stream) {
-      if (chunk instanceof GenerateContentResponse) {
-        const candidate: Candidate | undefined = chunk.candidates?.at(0);
-        const parts = candidate?.content?.parts ?? [];
-
-        if (chunk.usageMetadata) {
-          finalUsageMetadata = chunk.usageMetadata;
-        }
-
-        for (const p of parts) {
-          if (!p.text) {
-            continue;
-          } else if (p.thought) {
-            if (options.verbose && !thoughts) {
-              process.stdout.write("\nThoughts:\n");
-            }
-            if (options.verbose) {
-              process.stdout.write(p.text);
-            }
-            thoughts += p.text;
-          } else {
-            if (options.verbose) {
-              if (!returnedResponse) {
-                process.stdout.write("\nResponse:\n");
-              }
-              process.stdout.write(p.text);
-            }
-            returnedResponse += p.text;
-          }
-        }
-      }
-    }
-  } finally {
-    if (
-      "abort" in stream &&
-      typeof (stream as { abort?: unknown }).abort === "function"
-    ) {
-      (stream as { abort: () => void }).abort();
-    }
-    if (options.verbose) {
-      process.stdout.write("\n");
+  for (const p of result.candidates?.at(0)?.content?.parts ?? []) {
+    if (!p.text) {
+      continue;
+    } else if (p.thought) {
+      thoughts += p.text;
+    } else {
+      returnedResponse += p.text;
     }
   }
 
   // Post-process
-  const { cleaned, raw } = processResponse(returnedResponse, {
-    parseJson: options.parseJson,
-    clean: options.clean,
-    test: options.test,
-    verbose: options.verbose,
+  const response = processResponse(returnedResponse, {
+    parseJson: !!options.schemaJson,
   });
 
-  // Cache write
-  if (options.cache) {
-    writeCache(
-      cacheFileJSON,
-      cacheFileText,
-      cleaned,
-      options.parseJson ?? false,
-      options.verbose,
-    );
-  }
-
-  detailedData.response = cleaned;
-  detailedData.rawResponse = raw !== cleaned ? raw : undefined;
+  detailedData.response = response;
 
   // Metrics and pricing
   if (finalUsageMetadata) {
@@ -560,13 +473,7 @@ export default async function askGemini(
     const modelPricing = pricing.find((p) =>
       p.model === model.replace("-preview", "")
     );
-    if (!modelPricing) {
-      if (options.verbose) {
-        console.log(
-          `\nModel ${model.replace("-preview", "")} not found in pricing list.`,
-        );
-      }
-    } else {
+    if (modelPricing) {
       const promptTokenCount = finalUsageMetadata.promptTokenCount ?? 0;
       const outputTokenCount = finalUsageMetadata.candidatesTokenCount ?? 0;
       const thoughtsTokenCount = finalUsageMetadata.thoughtsTokenCount ?? 0;
@@ -580,24 +487,10 @@ export default async function askGemini(
         ) || modelPricing.tiers[modelPricing.tiers.length - 1];
         inputRate = tier.input;
         outputRate = tier.output;
-
-        if (options.verbose) {
-          const tierDescription = tier.threshold === Infinity
-            ? `> ${formatNumber(modelPricing.tiers[0].threshold)} tokens`
-            : `≤ ${formatNumber(tier.threshold)} tokens`;
-          console.log(
-            `\nPricing tier: ${tierDescription}${
-              hasAudio ? " (audio pricing applied)" : ""
-            }`,
-          );
-        }
       } else if ("input" in modelPricing && "output" in modelPricing) {
         inputRate = modelPricing.input;
         outputRate = modelPricing.output;
       } else {
-        if (options.verbose) {
-          console.log(`\nInvalid pricing structure for model ${model}.`);
-        }
         const durationMs = Date.now() - start;
         const totalTokens = promptTokenCount + outputTokenCount +
           thoughtsTokenCount;
@@ -632,39 +525,14 @@ export default async function askGemini(
       detailedData.durationMs = durationMs;
       detailedData.thoughts = thoughts;
       detailedData.thoughtsTokenCount = thoughtsTokenCount;
-
-      if (options.verbose) {
-        console.log(
-          `\n\nTokens in:`,
-          formatNumber(detailedData.promptTokenCount),
-          "/",
-          "Tokens out:",
-          formatNumber(detailedData.outputTokenCount),
-          "/",
-          "Thinking tokens:",
-          formatNumber(detailedData.thoughtsTokenCount),
-          "/",
-          "Tokens per second:",
-          formatNumber(detailedData.tokensPerSecond, {
-            significantDigits: 1,
-          }),
-          "/",
-          `Estimated cost${options.webSearch ? " (web search excluded)" : ""}:`,
-          formatNumber(detailedData.estimatedCost!, {
-            prefix: "$",
-            significantDigits: 1,
-            suffix: " USD",
-          }),
-        );
-      }
     }
   } else {
     detailedData.durationMs = Date.now() - start;
     detailedData.thoughts = thoughts;
   }
 
-  if (options.verbose) {
-    console.log("Execution time:", prettyDuration(start), "\n");
+  if (cacheFiles) {
+    writeCache(cacheFiles.cacheFile, detailedData);
   }
 
   return detailedData;

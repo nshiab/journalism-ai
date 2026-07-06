@@ -12,57 +12,44 @@ if (ollamaEnv) {
     rmSync("./.journalism-cache", { recursive: true });
   }
   Deno.test("should use a simple prompt (ollama)", async () => {
-    const result = await askOllama("What is the capital of France?", {
-      verbose: true,
-    });
+    const result = await askOllama("What is the capital of France?");
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
   Deno.test("should use a simple prompt with a high temperature (ollama)", async () => {
     const result = await askOllama("What is the capital of France?", {
-      verbose: true,
       temperature: 1,
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with thinking (ollama)", {
-    sanitizeResources: false,
-  }, async () => {
-    const result = await askOllama("What is the capital of France?", {
-      verbose: true,
-      thinkingBudget: 1,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
+  Deno.test(
+    "should use a simple prompt with thinking (ollama)",
+    {
+      sanitizeResources: false,
+    },
+    async () => {
+      const result = await askOllama("What is the capital of France?", {
+        thinkingBudget: 1,
+      });
+      console.log(result);
+      assertEquals(true, true);
+    },
+  );
   Deno.test(
     "should use a simple prompt with thinking and returning JSON (ollama)",
     {
       sanitizeResources: false,
     },
     async () => {
+      const schema = z.toJSONSchema(
+        z.object({ country: z.string(), capital: z.string() }),
+      );
       const result = await askOllama(
-        "What is the capital of France? Return a JSON with this shape: {country: string, capital: string}",
-        {
-          verbose: true,
-          thinkingBudget: 1,
-          returnJson: true,
-          clean: (response) =>
-            typeof response === "string"
-              ? response.replace(`{"{"`, `{"`)
-              : response,
-        },
+        "What is the capital of France?",
+        { thinkingBudget: 1, schemaJson: schema },
       );
       console.log(result);
-
-      // Just making sure it doesn't crash for now.
       assertEquals(true, true);
     },
   );
@@ -71,221 +58,93 @@ if (ollamaEnv) {
     { sanitizeResources: false },
     async () => {
       const ollamaClient = new Ollama({ host: "http://127.0.0.1:11434" });
-
       const result = await askOllama("What is the capital of France?", {
         ollama: ollamaClient,
       });
       console.log(result);
-
-      // Just making sure it doesn't crash for now.
       assertEquals(true, true);
     },
   );
-  Deno.test("should use a simple prompt with a cleaning and test functions (ollama)", async () => {
-    const result = await askOllama(
-      "Give me a list of 3 countries in Europe.",
-      {
-        returnJson: true,
-        cache: true,
-        clean: (response: unknown) =>
-          typeof response === "object" && response !== null &&
-            "countries" in response
-            ? response.countries
-            : response,
-        test: (response: unknown) => {
-          if (
-            Array.isArray(response) &&
-            response.length !== 3
-          ) {
-            throw new Error(
-              `Response does not contain three items: ${
-                JSON.stringify(response)
-              }`,
-            );
-          }
-        },
-      },
-    );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
+  Deno.test("should use a simple prompt with cache and schema (ollama)", async () => {
+    const schema = z.toJSONSchema(z.array(z.string()));
+    await askOllama("Give me a list of 3 countries in Europe.", {
+      schemaJson: schema,
+      cache: true,
+    });
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with a cleaning and test functions and return cached data (ollama)", async () => {
-    const result = await askOllama(
-      "Give me a list of 3 countries in Europe.",
-      {
-        returnJson: true,
-        cache: true,
-        clean: (response: unknown) =>
-          typeof response === "object" && response !== null &&
-            "countries" in response
-            ? response.countries
-            : response,
-        test: (response: unknown) => {
-          if (
-            Array.isArray(response) &&
-            response.length !== 3
-          ) {
-            throw new Error(
-              `Response does not contain three items: ${
-                JSON.stringify(response)
-              }`,
-            );
-          }
-        },
-      },
-    );
+  Deno.test("should return cached schema data (ollama)", async () => {
+    const schema = z.toJSONSchema(z.array(z.string()));
+    const result = await askOllama("Give me a list of 3 countries in Europe.", {
+      schemaJson: schema,
+      cache: true,
+    });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use be able to clean complex response (ollama)", {
-    sanitizeResources: false,
-  }, async () => {
-    const result = await askOllama(
-      `Guess whether it's a "Man" or a "Woman". If it could be both, return "Neutral". Return an objects with two keys in it: one with the names as an array and the other with the genders as an array.
-  Here are the name values as a JSON array:
-  ["Marie","John","Alex"]
-  Return your results in a JSON array as well. It's critical you return the same number of items, which is 3, exactly in the same order.`,
-      {
-        returnJson: true,
-        cache: true,
-        clean: (response: unknown) => {
-          if (
-            typeof response === "object" && response !== null &&
-            "genders" in response
-          ) {
-            return (response as { genders: string[] }).genders;
-          }
-          return response;
-        },
-        test: (response: unknown) => {
-          if (
-            !Array.isArray(response) ||
-            response.length !== 3
-          ) {
-            throw new Error(
-              `Response does not contain three items: ${
-                JSON.stringify(response)
-              }`,
-            );
-          }
-        },
-      },
-    );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
+    assertEquals(result.fromCache, true);
   });
   Deno.test("should use a simple prompt with cache (ollama)", async () => {
     const result = await askOllama("What is the capital of France?", {
       cache: true,
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt and return cached data", async () => {
+  Deno.test("should return cached data (ollama)", async () => {
     const result = await askOllama("What is the capital of France?", {
       cache: true,
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
+    assertEquals(result.fromCache, true);
   });
-  Deno.test("should use a simple prompt with cache and json", async () => {
-    const result = await askOllama(
-      "What is the capital of France? Return a JSON",
-      {
-        cache: true,
-        returnJson: true,
-      },
+  Deno.test("should cache and return structured output (ollama)", {
+    sanitizeResources: false,
+  }, async () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        people: z.array(z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        })),
+      }),
     );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
+    await askOllama("Give me 10 random people.", {
+      cache: true,
+      schemaJson: schema,
+    });
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt and return cached JSON data (ollama)", async () => {
-    const result = await askOllama(
-      "What is the capital of France? Return a JSON",
-      {
-        cache: true,
-        returnJson: true,
-      },
+  Deno.test("should return cached structured output (ollama)", {
+    sanitizeResources: false,
+  }, async () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        people: z.array(z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        })),
+      }),
     );
+    const result = await askOllama("Give me 10 random people.", {
+      cache: true,
+      schemaJson: schema,
+    });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with cache and verbose", async () => {
-    await askOllama("What is the capital of Canada?", {
-      cache: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached data with verbose (ollama)", async () => {
-    await askOllama("What is the capital of Canada?", {
-      cache: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with cache and verbose and json (ollama)", async () => {
-    await askOllama("What is the capital of Canada? Return a JSON.", {
-      cache: true,
-      returnJson: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached json data with verbose and json (ollama)", async () => {
-    await askOllama("What is the capital of Canada? Return a JSON.", {
-      cache: true,
-      returnJson: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and log extra information (ollama)", async () => {
-    await askOllama("What is the capital of France?", {
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
+    assertEquals(result.fromCache, true);
   });
 
   Deno.test(
-    "should scrape a web page with default context window size (ollama)",
+    "should scrape a web page (ollama)",
     { sanitizeResources: false },
     async () => {
       await askOllama(
         `What is this website about?`,
         {
           HTMLFrom: "https://www.code-like-a-journalist.com/en",
-          returnJson: true,
-          verbose: true,
           cache: true,
         },
       );
-
-      // Just making sure it doesn't crash for now.
       assertEquals(true, true);
     },
   );
@@ -298,14 +157,10 @@ if (ollamaEnv) {
         `What is this website about?`,
         {
           HTMLFrom: "https://www.code-like-a-journalist.com/en",
-          returnJson: true,
-          verbose: true,
           contextWindow: 32000,
           cache: true,
         },
       );
-
-      // Just making sure it doesn't crash for now.
       assertEquals(true, true);
     },
   );
@@ -313,48 +168,31 @@ if (ollamaEnv) {
     "should analyze images (ollama)",
     { sanitizeResources: false },
     async () => {
+      const schema = z.toJSONSchema(
+        z.object({
+          name: z.string().nullable(),
+          description: z.string(),
+          isPolitician: z.boolean(),
+        }),
+      );
       await askOllama(
-        `I want an object with the following properties:
-        - name: the person on the image,
-        - description: a very short description of the image,
-        - isPolitician: true is if it's a politician and false if it isn't.
-    Return a JSON.`,
+        "Return an object with: name (person if recognizable, else null), description, isPolitician.",
         {
           image:
             "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.47 PM.png",
-          verbose: true,
-          returnJson: true,
+          schemaJson: schema,
         },
       );
-
-      // Just making sure it doesn't crash for now.
       assertEquals(true, true);
     },
   );
   Deno.test("should use a text file (ollama)", async () => {
     const result = await askOllama(
       "What is the content of this text file?",
-      {
-        text: "test/data/data.csv",
-        verbose: true,
-      },
+      { text: "test/data/data.csv" },
     );
     console.log(result);
     assertEquals(true, true);
-  });
-  Deno.test("should return raw string when parseJson is false and returnJson is true", async () => {
-    const result = await askOllama("Give me a list of 3 countries in Europe.", {
-      returnJson: true,
-      parseJson: false,
-    });
-    console.log(result);
-    // Should be a string, not an array
-    if (Array.isArray(result)) {
-      throw new Error(
-        "Result should not be parsed as JSON when parseJson is false",
-      );
-    }
-    assertEquals(typeof result, "string");
   });
   Deno.test("should return a structured output and cache it", {
     sanitizeResources: false,
@@ -370,7 +208,6 @@ if (ollamaEnv) {
     );
 
     await askOllama("Give me 10 random people.", {
-      verbose: true,
       cache: true,
       schemaJson: schema,
     });
@@ -389,75 +226,47 @@ if (ollamaEnv) {
       }),
     );
 
-    await askOllama("Give me 10 random people.", {
-      verbose: true,
+    const result = await askOllama("Give me 10 random people.", {
       cache: true,
       schemaJson: schema,
     });
-    assertEquals(true, true);
+    console.log(result);
+    assertEquals(result.fromCache, true);
   });
   Deno.test("should work without a system prompt", async () => {
-    await askOllama("Why is the sky blue?", {
-      verbose: true,
-    });
+    await askOllama("Why is the sky blue?");
     assertEquals(true, true);
   });
   Deno.test("should work with a system prompt", async () => {
     await askOllama("Why is the sky blue?", {
-      verbose: true,
       systemPrompt: "Always answer with rhymes.",
     });
     assertEquals(true, true);
   });
-  Deno.test("should work with thinking level low by default", {
+  Deno.test("should work with thinking level low (ollama)", {
     sanitizeResources: false,
   }, async () => {
     await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
-      {
-        verbose: true,
-        includeThoughts: true,
-        thinkingLevel: "low",
-      },
+      { thinkingLevel: "low" },
     );
     assertEquals(true, true);
   });
-  Deno.test("should work with thinking level low", {
+  Deno.test("should work with thinking level medium (ollama)", {
     sanitizeResources: false,
   }, async () => {
     await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
-      {
-        verbose: true,
-        includeThoughts: true,
-        thinkingLevel: "low",
-      },
+      { thinkingLevel: "medium" },
     );
     assertEquals(true, true);
   });
-  Deno.test("should work with thinking level medium", {
+  Deno.test("should work with thinking level high (ollama)", {
     sanitizeResources: false,
   }, async () => {
     await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
-      {
-        verbose: true,
-        thinkingLevel: "medium",
-        includeThoughts: true,
-      },
-    );
-    assertEquals(true, true);
-  });
-  Deno.test("should work with thinking level high", {
-    sanitizeResources: false,
-  }, async () => {
-    await askOllama(
-      "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
-      {
-        verbose: true,
-        thinkingLevel: "high",
-        includeThoughts: true,
-      },
+      { thinkingLevel: "high" },
     );
     assertEquals(true, true);
   });

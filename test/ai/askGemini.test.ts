@@ -1,5 +1,5 @@
 import "@std/dotenv/load";
-import { assertEquals, assertRejects } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert";
 import askGemini from "../../src/ai/askGemini.ts";
 import { existsSync, rmSync } from "node:fs";
 import * as z from "zod";
@@ -10,58 +10,20 @@ if (typeof aiKey === "string" && aiKey !== "") {
     rmSync("./.journalism-cache", { recursive: true });
   }
 
-  Deno.test("should run the doc example", async () => {
-    const europeanCountries = await askGemini(
-      `Give me a list of three countries in Northern Europe.`,
-      {
-        returnJson: true,
-        clean: (response: unknown) => {
-          // When parseJson is true, response is the parsed JSON object/array
-          // When parseJson is false, response is a string
-          // Example: Trim whitespace from each country name in the array
-          if (Array.isArray(response)) {
-            return response.map((item) =>
-              typeof item === "string" ? item.trim() : item
-            );
-          }
-          return response;
-        },
-        test: (response) => {
-          if (!Array.isArray(response)) {
-            throw new Error("Response is not an array.");
-          }
-          if (response.length !== 3) {
-            throw new Error("Response does not contain exactly three items.");
-          }
-          console.log(
-            "Test passed: The response is a valid list of three countries.",
-          );
-        },
-      },
-    );
-    console.log(europeanCountries);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
   Deno.test("should use a simple prompt", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      verbose: true,
-    });
+    const result = await askGemini("What is the capital of France?");
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with a detailed response", async () => {
+
+  Deno.test("should specify a model directly", async () => {
     const result = await askGemini("What is the capital of France?", {
-      verbose: true,
+      model: "gemini-3.5-flash",
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
+
   Deno.test("should accumulate cost and tokens across multiple calls", async () => {
     const r1 = await askGemini("What is the capital of France?");
     const r2 = await askGemini("What is the capital of Canada?");
@@ -71,503 +33,259 @@ if (typeof aiKey === "string" && aiKey !== "") {
     const totalTokens = r1.totalTokens + r2.totalTokens + r3.totalTokens;
     console.log("Total cost:", totalCost);
     console.log("Total tokens:", totalTokens);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with undefined thinking", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      verbose: true,
-      model: "gemini-2.5-flash",
-    });
-    console.log(result);
 
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt without thinking", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      thinkingBudget: 0,
-      verbose: true,
-      model: "gemini-2.5-flash",
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with thinking (5000)", async () => {
-    const result = await askGemini(
-      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
-      {
-        thinkingBudget: 5000,
-        verbose: true,
-        model: "gemini-2.5-flash",
-      },
+  Deno.test("should return structured JSON output", async () => {
+    const schema = z.toJSONSchema(
+      z.array(z.object({ name: z.string(), age: z.number() })),
     );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with dynamic thinking (-1) and detailed response and cache", async () => {
-    const result = await askGemini(
-      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
-      {
-        thinkingBudget: -1,
-        model: "gemini-2.5-flash",
-        cache: true,
-      },
-    );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached response", async () => {
-    const result = await askGemini(
-      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the result. No explanations. But think carefully first.",
-      {
-        thinkingBudget: -1,
-        model: "gemini-2.5-flash",
-        cache: true,
-      },
-    );
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt without thinking and returning JSON", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      thinkingBudget: 0,
-      verbose: true,
-      returnJson: true,
-      model: "gemini-2.5-flash",
+    const result = await askGemini("Give me 3 random people.", {
+      schemaJson: schema,
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with thinking and returning JSON", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      thinkingBudget: 500,
-      verbose: true,
-      returnJson: true,
-      model: "gemini-2.5-flash",
-    });
-    console.log(result);
 
-    // Just making sure it doesn't crash for now.
+  Deno.test("should cache a response", async () => {
+    await askGemini("What is the capital of France?", { cache: true });
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with a test", async () => {
-    const result = await askGemini("Give me a list of 3 countries in Europe.", {
-      returnJson: true,
-      test: (response: unknown) => {
-        if (!Array.isArray(response)) {
-          throw new Error(
-            `Response is not an array: ${JSON.stringify(response)}`,
-          );
-        }
-        if (response.length !== 3) {
-          throw new Error(
-            `Response does not contain three items: ${
-              JSON.stringify(response)
-            }`,
-          );
-        }
-      },
-    });
-    console.log(result);
 
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with a list of tests", async () => {
-    const result = await askGemini("Give me a list of 3 countries in Europe.", {
-      returnJson: true,
-      test: [(response: unknown) => {
-        if (!Array.isArray(response)) {
-          throw new Error(
-            `Response is not an array: ${JSON.stringify(response)}`,
-          );
-        }
-        if (response.length !== 3) {
-          throw new Error(
-            `Response does not contain three items: ${
-              JSON.stringify(response)
-            }`,
-          );
-        }
-      }],
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with cache", async () => {
+  Deno.test("should return cached response", async () => {
     const result = await askGemini("What is the capital of France?", {
       cache: true,
     });
     console.log(result);
+    assertEquals(result.fromCache, true);
+  });
 
-    // Just making sure it doesn't crash for now.
+  Deno.test("should cache structured output", async () => {
+    const schema = z.toJSONSchema(
+      z.array(
+        z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        }),
+      ),
+    );
+    await askGemini("Give me 10 random people.", {
+      schemaJson: schema,
+      cache: true,
+    });
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt and return cached data", async () => {
-    const result = await askGemini("What is the capital of France?", {
+
+  Deno.test("should return cached structured output", async () => {
+    const schema = z.toJSONSchema(
+      z.array(
+        z.object({
+          name: z.string(),
+          age: z.number(),
+          gender: z.enum(["man", "woman"]),
+        }),
+      ),
+    );
+    const result = await askGemini("Give me 10 random people.", {
+      schemaJson: schema,
       cache: true,
     });
     console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
+    assertEquals(result.fromCache, true);
   });
-  Deno.test("should use a simple prompt with cache and json", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      cache: true,
-      returnJson: true,
-    });
-    console.log(result);
 
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached JSON data", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      cache: true,
-      returnJson: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with cache and verbose", async () => {
-    await askGemini("What is the capital of Canada?", {
-      cache: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached data with verbose", async () => {
-    await askGemini("What is the capital of Canada?", {
-      cache: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt with cache and verbose and json", async () => {
-    await askGemini("What is the capital of Canada?", {
-      cache: true,
-      returnJson: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should use a simple prompt and return cached json data with verbose and json", async () => {
-    await askGemini("What is the capital of Canada?", {
-      cache: true,
-      returnJson: true,
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
+  Deno.test("should answer without web search", async () => {
+    await askGemini("Who is Nael Shiab?");
     assertEquals(true, true);
   });
 
-  Deno.test("should use a simple prompt and return a json", async () => {
-    const result = await askGemini("What is the capital of France?", {
-      returnJson: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
+  Deno.test("should answer with web search", async () => {
+    await askGemini("Who is Nael Shiab?", { webSearch: true });
     assertEquals(true, true);
   });
 
-  Deno.test("should use a simple prompt and log extra information", async () => {
-    await askGemini("What is the capital of France?", {
-      verbose: true,
-    });
-
-    // Just making sure it doesn't crash for now.
+  Deno.test("should cache web search response", async () => {
+    await askGemini("Who is Nael Shiab?", { webSearch: true, cache: true });
     assertEquals(true, true);
   });
 
-  Deno.test("should scrape a web page", async () => {
-    await askGemini(
-      `Here's the page showing presidential executive orders. Extract the executive order/names, dates (yyyy-mm-dd), and urls as an array of objects. Also categorize each executive order based on its name.`,
-      {
-        HTMLFrom:
-          "https://www.whitehouse.gov/presidential-actions/executive-orders/",
-        returnJson: true,
-        verbose: true,
-      },
-    );
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-
-  Deno.test("should analyze an audio file", async () => {
-    const audioResponse = await askGemini(
-      `Return an object with the name of the person talking and an approximate date of the speech if you recognize it.`,
-      {
-        audio: "test/data/ai/speech.mp3",
-        returnJson: true,
-        verbose: true,
-      },
-    );
-    console.log(audioResponse);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-
-  Deno.test("should analyze images", async () => {
-    const images = [];
-    for await (const dirEntry of Deno.readDir("test/data/ai/pictures")) {
-      images.push(`test/data/ai/pictures/${dirEntry.name}`);
-    }
-
-    await askGemini(
-      `Based on the images I send you, I want an array of objects with the following properties:
-    - name: the person on the image if it's a human and you can recognize it,
-    - description: a very short description of the image,
-    - isPolitician: true is if it's a politician and false if it isn't.`,
-      {
-        image: images,
-        verbose: true,
-        returnJson: true,
-      },
-    );
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-
-  Deno.test("should analyze a video file", async () => {
-    await askGemini(
-      `I want a array of objects, with each object having the following keys: name, timestamp, main emotion, transcript. Each time a new person talks, create a new object.`,
-      {
-        video: "test/data/ai/The Ontario leaders' debate in 3 minutes 360.mp4",
-        returnJson: true,
-        verbose: true,
-      },
-    );
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-
-  Deno.test("should analyze a pdf file with a specific model", async () => {
-    await askGemini(
-      `This is a supreme court decision. Give me the merits of the case in the document. I want to know what happened and when. Return a list of objects with a date and a brief summary for each important event. Sort them chronologically.`,
-      {
-        model: "gemini-2.0-flash",
-        pdf: "test/data/ai/Piekut-en.pdf",
-        returnJson: true,
-        verbose: true,
-      },
-    );
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should analyze different files with different formats", async () => {
-    await askGemini(
-      `Give me a short description of each things I give you.`,
-      {
-        model: "gemini-2.0-flash",
-        HTMLFrom:
-          "https://www.whitehouse.gov/presidential-actions/executive-orders/",
-        audio: "test/data/ai/speech.mp3",
-        image: "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.14 PM.png",
-        video: "test/data/ai/The Ontario leaders' debate in 3 minutes 360.mp4",
-        pdf: "test/data/ai/Piekut-en.pdf",
-        returnJson: true,
-        verbose: true,
-      },
-    );
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should return raw string when parseJson is false and returnJson is true", async () => {
-    const result = await askGemini("Give me a list of 3 countries in Europe.", {
-      returnJson: true,
-      parseJson: false,
-    });
-    console.log(result);
-    // Should be a string, not an array
-    if (Array.isArray(result)) {
-      throw new Error(
-        "Result should not be parsed as JSON when parseJson is false",
-      );
-    }
-    assertEquals(typeof result, "string");
-  });
-
-  Deno.test("should use a text file", async () => {
-    await askGemini(
-      "What is the content of this text file?",
-      {
-        text: "test/data/data.csv",
-        verbose: true,
-      },
-    );
-    assertEquals(true, true);
-  });
-  Deno.test("should use an image file stored in a google bucket", async () => {
-    await askGemini("What is in this image?", {
-      verbose: true,
-      image: "gs://nael_test_bucket/journalism-tests/cat.png",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should use a video file stored in a google bucket", async () => {
-    await askGemini("What is happening in this video?", {
-      verbose: true,
-      video: "gs://nael_test_bucket/journalism-tests/debate.mp4",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should use a pdf file stored in a google bucket", async () => {
-    await askGemini("What is this document about?", {
-      verbose: true,
-      pdf: "gs://nael_test_bucket/journalism-tests/piekut.pdf",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should use an audio file stored in a google bucket", async () => {
-    await askGemini("What is this audio about?", {
-      verbose: true,
-      audio: "gs://nael_test_bucket/journalism-tests/speech.mp3",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should use a text file stored in a google bucket", async () => {
-    await askGemini("What is the content of this text file?", {
-      verbose: true,
-      text: "gs://nael_test_bucket/journalism-tests/data.csv",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should answer without grounding with web search", async () => {
-    await askGemini("Who is Nael Shiab?", {
-      verbose: true,
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should answer with grounding with web search and caching", async () => {
-    await askGemini("Who is Nael Shiab?", {
-      verbose: true,
+  Deno.test("should return cached web search response", async () => {
+    const result = await askGemini("Who is Nael Shiab?", {
       webSearch: true,
       cache: true,
     });
-    assertEquals(true, true);
-  });
-  Deno.test("should answer with grounding with web search and return cached data", async () => {
-    await askGemini("Who is Nael Shiab?", {
-      verbose: true,
-      webSearch: true,
-      cache: true,
-    });
-    assertEquals(true, true);
+    assertEquals(result.fromCache, true);
   });
 
-  Deno.test("should return a structured output and cache it", async () => {
-    const schema = z.toJSONSchema(
-      z.array(z.object({
-        name: z.string(),
-        age: z.number(),
-        gender: z.enum(["man", "woman"]),
-      })),
-    );
-
-    await askGemini("Give me 10 random people.", {
-      verbose: true,
-      cache: true,
-      schemaJson: schema,
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should return a cached structured output", async () => {
-    const schema = z.toJSONSchema(
-      z.array(z.object({
-        name: z.string(),
-        age: z.number(),
-        gender: z.enum(["man", "woman"]),
-      })),
-    );
-
-    await askGemini("Give me 10 random people.", {
-      verbose: true,
-      cache: true,
-      schemaJson: schema,
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should work with thinking level minimal by default", async () => {
-    await askGemini("Give me 10 random people.", {
-      verbose: true,
-      cache: true,
-      includeThoughts: true,
-      model: "gemini-3-flash-preview",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should work with thinking level medium", async () => {
-    await askGemini("Give me 10 random people.", {
-      verbose: true,
-      cache: true,
-      thinkingLevel: "medium",
-      includeThoughts: true,
-      model: "gemini-3-flash-preview",
-    });
-    assertEquals(true, true);
-  });
-  Deno.test("should work without a system prompt", async () => {
-    await askGemini("Why is the sky blue?", {
-      verbose: true,
-    });
-    assertEquals(true, true);
-  });
   Deno.test("should work with a system prompt", async () => {
-    await askGemini("Why is the sky blue?", {
-      verbose: true,
+    const result = await askGemini("Why is the sky blue?", {
       systemPrompt: "Always answer with rhymes.",
     });
+    console.log(result);
     assertEquals(true, true);
   });
+
+  Deno.test("should use thinking level medium", async () => {
+    const result = await askGemini(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the number.",
+      { thinkingLevel: "medium" },
+    );
+    console.log(result);
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use thinking level high with cache", async () => {
+    await askGemini(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the number.",
+      { thinkingLevel: "high", cache: true },
+    );
+    assertEquals(true, true);
+  });
+
+  Deno.test("should return cached thinking response", async () => {
+    const result = await askGemini(
+      "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the number.",
+      { thinkingLevel: "high", cache: true },
+    );
+    assertEquals(result.fromCache, true);
+  });
+
   Deno.test("should accept safetyEnabled option", async () => {
     await askGemini("What is the capital of France?", {
       safetyEnabled: false,
     });
     assertEquals(true, true);
   });
-} else {
-  console.log("No AI_PROJECT in process.env");
-}
 
-Deno.test("should throw an error when taking a screenshot", async () => {
-  await assertRejects(
-    () =>
-      askGemini(
-        `Tell me which products are on special.`,
-        {
-          screenshotFrom: "https://www.metro.ca/circulaire",
-          verbose: true,
-        },
+  Deno.test("should scrape a web page", async () => {
+    const schema = z.toJSONSchema(
+      z.array(
+        z.object({
+          title: z.string(),
+          date: z.string(),
+          url: z.string(),
+          category: z.string(),
+        }),
       ),
-    Error,
-    "The 'screenshotFrom' option has been removed to reduce dependencies. Please take a screenshot yourself and pass it via the 'image' option.",
-  );
-});
+    );
+    await askGemini(
+      `Extract executive order titles, dates (yyyy-mm-dd), URLs, and categories.`,
+      {
+        HTMLFrom:
+          "https://www.whitehouse.gov/presidential-actions/executive-orders/",
+        schemaJson: schema,
+      },
+    );
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use a text file", async () => {
+    await askGemini("What is the content of this text file?", {
+      text: "test/data/data.csv",
+    });
+    assertEquals(true, true);
+  });
+
+  Deno.test("should analyze an audio file", async () => {
+    const schema = z.toJSONSchema(
+      z.object({ speaker: z.string(), approximateDate: z.string() }),
+    );
+    const result = await askGemini(
+      "Return an object with the name of the person talking and an approximate date of the speech.",
+      { audio: "test/data/ai/speech.mp3", schemaJson: schema },
+    );
+    console.log(result);
+    assertEquals(true, true);
+  });
+
+  Deno.test("should analyze images", async () => {
+    const images: string[] = [];
+    for await (const dirEntry of Deno.readDir("test/data/ai/pictures")) {
+      images.push(`test/data/ai/pictures/${dirEntry.name}`);
+    }
+    const schema = z.toJSONSchema(
+      z.array(
+        z.object({
+          name: z.string().nullable(),
+          description: z.string(),
+          isPolitician: z.boolean(),
+        }),
+      ),
+    );
+    await askGemini(
+      "For each image return: name (person if recognizable, else null), description, isPolitician.",
+      { image: images, schemaJson: schema },
+    );
+    assertEquals(true, true);
+  });
+
+  Deno.test("should analyze a video file", async () => {
+    const schema = z.toJSONSchema(
+      z.array(
+        z.object({
+          name: z.string(),
+          timestamp: z.string(),
+          mainEmotion: z.string(),
+          transcript: z.string(),
+        }),
+      ),
+    );
+    await askGemini(
+      "Each time a new person talks, create a new object with name, timestamp, main emotion, transcript.",
+      {
+        video: "test/data/ai/The Ontario leaders' debate in 3 minutes 360.mp4",
+        schemaJson: schema,
+      },
+    );
+    assertEquals(true, true);
+  });
+
+  Deno.test("should analyze a pdf file", async () => {
+    const schema = z.toJSONSchema(
+      z.array(z.object({ date: z.string(), summary: z.string() })),
+    );
+    await askGemini(
+      "Return a chronological list of important events with date and brief summary.",
+      { pdf: "test/data/ai/Piekut-en.pdf", schemaJson: schema },
+    );
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use an image file from GCS", async () => {
+    await askGemini("What is in this image?", {
+      image: "gs://nael_test_bucket/journalism-tests/cat.png",
+    });
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use a video file from GCS", async () => {
+    await askGemini("What is happening in this video?", {
+      video: "gs://nael_test_bucket/journalism-tests/debate.mp4",
+    });
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use a pdf file from GCS", async () => {
+    await askGemini("What is this document about?", {
+      pdf: "gs://nael_test_bucket/journalism-tests/piekut.pdf",
+    });
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use an audio file from GCS", async () => {
+    await askGemini("What is this audio about?", {
+      audio: "gs://nael_test_bucket/journalism-tests/speech.mp3",
+    });
+    assertEquals(true, true);
+  });
+
+  Deno.test("should use a text file from GCS", async () => {
+    await askGemini("What is the content of this text file?", {
+      text: "gs://nael_test_bucket/journalism-tests/data.csv",
+    });
+    assertEquals(true, true);
+  });
+} else {
+  console.log("No AI_KEY or AI_PROJECT in process.env");
+}

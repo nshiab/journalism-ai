@@ -20,17 +20,9 @@ export type askGeminiRequest = {
     audio?: string | string[];
     pdf?: string | string[];
     text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
     schemaJson?: unknown;
-    verbose?: boolean;
     cache?: boolean;
-    test?:
-      | ((response: unknown) => void)
-      | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
   };
@@ -77,8 +69,8 @@ export type askGeminiRequest = {
  * // Enable progress logging and retries.
  * const { results, errors } = await askGeminiPool(
  *   [
- *     { prompt: "Summarize this article.", options: { text: "./article1.txt", returnJson: true } },
- *     { prompt: "Summarize this article.", options: { text: "./article2.txt", returnJson: true } },
+ *     { prompt: "Summarize this article.", options: { text: "./article1.txt", schemaJson: schema } },
+ *     { prompt: "Summarize this article.", options: { text: "./article2.txt", schemaJson: schema } },
  *   ],
  *   3,
  *   {
@@ -94,7 +86,7 @@ export type askGeminiRequest = {
  * // Use retryCheck to only retry on specific errors.
  * const { results, errors } = await askGeminiPool(
  *   [
- *     { prompt: "Analyze this image.", options: { image: "./photo.jpg", returnJson: true } },
+ *     { prompt: "Analyze this image.", options: { image: "./photo.jpg", schemaJson: schema } },
  *   ],
  *   1,
  *   {

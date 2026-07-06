@@ -36,15 +36,18 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[1].request.id, "germany");
   });
   Deno.test("should process requests with options", async () => {
+    const schema = z.toJSONSchema(
+      z.array(z.string()),
+    );
     const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me a list of 3 countries in Europe.",
-          options: { returnJson: true },
+          options: { schemaJson: schema },
         },
         {
           prompt: "Give me a list of 3 countries in Asia.",
-          options: { returnJson: true },
+          options: { schemaJson: schema },
         },
       ],
       2,
@@ -135,40 +138,43 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[1].index, 1);
     assertEquals(results[2].index, 2);
   });
-  Deno.test("should use test and clean options on individual requests", async () => {
+  Deno.test("should use thinking level medium", async () => {
     const { results, errors } = await askGeminiPool(
       [
+        { prompt: "How do you feel?", options: { thinkingLevel: "medium" } },
+        { prompt: "Where do you live?", options: { thinkingLevel: "medium" } },
         {
-          prompt: "Give me a list of 3 countries in Europe.",
-          options: {
-            returnJson: true,
-            clean: (response: unknown) => {
-              if (Array.isArray(response)) {
-                return response.map((item) =>
-                  typeof item === "string" ? item.trim() : item
-                );
-              }
-              return response;
-            },
-            test: (response: unknown) => {
-              if (!Array.isArray(response)) {
-                throw new Error("Response is not an array.");
-              }
-              if (response.length !== 3) {
-                throw new Error(
-                  "Response does not contain exactly three items.",
-                );
-              }
-            },
-          },
+          prompt: "Do you have a consciousness?",
+          options: { thinkingLevel: "medium" },
         },
       ],
       1,
+      { logProgress: true },
     );
     console.log(results);
+    console.log(errors);
 
     assertEquals(errors.length, 0);
-    assertEquals(results.length, 1);
+    assertEquals(results.length, 3);
+  });
+  Deno.test("should run with high thinking level", async () => {
+    const { results, errors } = await askGeminiPool(
+      [
+        { prompt: "How do you feel?", options: { thinkingLevel: "high" } },
+        { prompt: "Where do you live?", options: { thinkingLevel: "high" } },
+        {
+          prompt: "Do you have a consciousness?",
+          options: { thinkingLevel: "high" },
+        },
+      ],
+      1,
+      { logProgress: true },
+    );
+    console.log(results);
+    console.log(errors);
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
   });
   Deno.test("should use a text file as input", async () => {
     const { results, errors } = await askGeminiPool(
@@ -259,94 +265,17 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
   });
   Deno.test("should run with minimal thinking level by default", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-
     const { results, errors } = await askGeminiPool(
       [
-        {
-          prompt: "How do you feel?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Where do you live?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Do you have a consciousness?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
+        { prompt: "How do you feel?" },
+        { prompt: "Where do you live?" },
+        { prompt: "Do you have a consciousness?" },
       ],
       1,
-      { metrics, logProgress: true },
+      { logProgress: true },
     );
     console.log(results);
     console.log(errors);
-    console.table(metrics);
-
-    assertEquals(errors.length, 0);
-    assertEquals(results.length, 3);
-  });
-  Deno.test("should run with high thinking level by default", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-
-    const { results, errors } = await askGeminiPool(
-      [
-        {
-          prompt: "How do you feel?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Where do you live?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Do you have a consciousness?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-      ],
-      1,
-      { metrics, logProgress: true },
-    );
-    console.log(results);
-    console.log(errors);
-    console.table(metrics);
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
