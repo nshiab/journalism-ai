@@ -56,7 +56,6 @@ if (typeof aiKey === "string" && aiKey !== "") {
   Deno.test("should use a simple prompt with a detailed response", async () => {
     const result = await askGemini("What is the capital of France?", {
       verbose: true,
-      detailedResponse: true,
     });
     console.log(result);
 
@@ -163,7 +162,6 @@ if (typeof aiKey === "string" && aiKey !== "") {
         thinkingBudget: -1,
         model: "gemini-2.5-flash",
         cache: true,
-        detailedResponse: true,
       },
     );
     console.log(result);
@@ -178,7 +176,6 @@ if (typeof aiKey === "string" && aiKey !== "") {
         thinkingBudget: -1,
         model: "gemini-2.5-flash",
         cache: true,
-        detailedResponse: true,
       },
     );
     console.log(result);

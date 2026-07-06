@@ -5,7 +5,7 @@ import ollama, { type ChatRequest, Ollama } from "ollama";
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
-/** The detailed response shape returned when `detailedResponse: true`. */
+/** The detailed response shape returned by {@link askOllama}. */
 export type OllamaDetailedResponse = {
   response: unknown;
   rawResponse: unknown;
@@ -72,10 +72,9 @@ export type OllamaDetailedResponse = {
  *
  * @example
  * ```ts
- * // Detailed response with token usage.
- * const result = await askOllama("What is the capital of France?", {
- *   detailedResponse: true,
- * });
+ * // Access token usage directly from the response.
+ * const result = await askOllama("What is the capital of France?");
+ * console.log(result.response); // "Paris"
  * console.log(`${result.totalTokens} tokens in ${result.durationMs}ms`);
  * ```
  *
@@ -98,122 +97,11 @@ export type OllamaDetailedResponse = {
  * @param options.thinkingLevel - Any value enables reasoning.
  * @param options.includeThoughts - Include reasoning thoughts in output.
  * @param options.temperature - Sampling temperature (default 0).
- * @param options.detailedResponse - Return metadata alongside the response.
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
  * @param options.metrics - Cumulative metrics object updated after each call.
  *
  * @category AI
  */
-export default async function askOllama(
-  prompt: string,
-  options: {
-    systemPrompt?: string;
-    model?: string;
-    // deno-lint-ignore no-explicit-any
-    ollama?: any;
-    HTMLFrom?: string | string[];
-    image?: string | string[];
-    text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
-    schemaJson?: unknown;
-    verbose?: boolean;
-    cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
-    contextWindow?: number;
-    thinkingBudget?: number;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
-    temperature?: number;
-    detailedResponse: true;
-    // deno-lint-ignore no-explicit-any
-    ollamaParameters?: any;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
-  },
-): Promise<OllamaDetailedResponse>;
-
-/**
- * Interacts with a local Ollama model to perform a wide range of tasks.
- *
- * Ollama must be running on the machine. Set the `AI_MODEL` environment
- * variable or pass `model` directly.
- *
- * Pass a custom `Ollama` instance via the `ollama` option to target a
- * non-default host.
- *
- * **Limitations vs Gemini**: audio, video, and PDF are not supported. GCS
- * (`gs://`) URLs are not supported — use local file paths only.
- *
- * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
- *
- * Temperature defaults to 0 for deterministic responses.
- *
- * @param prompt - The primary text prompt.
- * @param options.model - Model name; defaults to `AI_MODEL` env var.
- * @param options.ollama - Custom `Ollama` instance targeting a specific host.
- * @param options.systemPrompt - Optional system prompt.
- * @param options.HTMLFrom - URL(s) whose body HTML is appended to the prompt.
- * @param options.image - Local path(s) to image files.
- * @param options.text - Local path(s) to text files.
- * @param options.returnJson - Ask the model to return JSON.
- * @param options.parseJson - Auto-parse the JSON response.
- * @param options.schemaJson - JSON schema for structured output.
- * @param options.cache - Cache the response in `.journalism-cache`.
- * @param options.verbose - Log prompt, response, and token usage.
- * @param options.clean - Transform the response before returning.
- * @param options.test - Assert on the response (throws on failure).
- * @param options.contextWindow - Override the model's context window size.
- * @param options.thinkingBudget - Any non-zero value enables reasoning.
- * @param options.thinkingLevel - Any value enables reasoning.
- * @param options.includeThoughts - Include reasoning thoughts in output.
- * @param options.temperature - Sampling temperature (default 0).
- * @param options.detailedResponse - Return metadata alongside the response.
- * @param options.ollamaParameters - Extra params merged into `client.chat`.
- * @param options.metrics - Cumulative metrics object updated after each call.
- *
- * @category AI
- */
-export default async function askOllama(
-  prompt: string,
-  options?: {
-    systemPrompt?: string;
-    model?: string;
-    // deno-lint-ignore no-explicit-any
-    ollama?: any;
-    HTMLFrom?: string | string[];
-    image?: string | string[];
-    text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
-    schemaJson?: unknown;
-    verbose?: boolean;
-    cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
-    contextWindow?: number;
-    thinkingBudget?: number;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
-    temperature?: number;
-    detailedResponse?: false;
-    // deno-lint-ignore no-explicit-any
-    ollamaParameters?: any;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
-  },
-): Promise<unknown>;
-
-// Implementation
 export default async function askOllama(
   prompt: string,
   options: {
@@ -235,7 +123,6 @@ export default async function askOllama(
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     includeThoughts?: boolean;
     temperature?: number;
-    detailedResponse?: boolean;
     ollamaParameters?: Partial<ChatRequest>;
     metrics?: {
       totalCost: number;
@@ -244,7 +131,7 @@ export default async function askOllama(
       totalRequests: number;
     };
   } = {},
-): Promise<unknown> {
+): Promise<OllamaDetailedResponse> {
   const start = Date.now();
 
   const defaults = {
@@ -383,17 +270,14 @@ export default async function askOllama(
   let cacheFileJSON = "";
   let cacheFileText = "";
   if (options.cache) {
-    const cacheFiles = initCache(params, options.clean);
+    const cacheFiles = initCache(params, options.clean, options.test);
     cacheFileJSON = cacheFiles.cacheFileJSON;
     cacheFileText = cacheFiles.cacheFileText;
     const hit = readCache(cacheFileJSON, cacheFileText, {
       verbose: options.verbose,
     });
     if (hit !== null) {
-      if (options.detailedResponse) {
-        return { ...detailedData, response: hit.response, fromCache: true };
-      }
-      return hit.response;
+      return { ...detailedData, response: hit.response, fromCache: true };
     }
   }
 
@@ -425,15 +309,13 @@ export default async function askOllama(
       finalOllamaResponse = chunk;
 
       if (chunk.message.thinking) {
-        if (options.verbose || options.detailedResponse) {
-          if (options.verbose && !thoughts) {
-            process.stdout.write("\nThoughts:\n");
-          }
-          if (options.verbose) {
-            process.stdout.write(chunk.message.thinking);
-          }
-          thoughts += chunk.message.thinking;
+        if (options.verbose && !thoughts) {
+          process.stdout.write("\nThoughts:\n");
         }
+        if (options.verbose) {
+          process.stdout.write(chunk.message.thinking);
+        }
+        thoughts += chunk.message.thinking;
       } else if (chunk.message.content) {
         if (options.verbose) {
           if (!returnedResponse) {
@@ -479,10 +361,7 @@ export default async function askOllama(
   detailedData.rawResponse = raw !== cleaned ? raw : undefined;
 
   // Metrics
-  if (
-    (options.verbose || options.metrics || options.detailedResponse) &&
-    finalOllamaResponse
-  ) {
+  if (finalOllamaResponse) {
     const promptTokenCount = finalOllamaResponse.prompt_eval_count;
     const outputTokenCount = finalOllamaResponse.eval_count;
     const totalTokens = promptTokenCount + outputTokenCount;
@@ -520,7 +399,7 @@ export default async function askOllama(
         }),
       );
     }
-  } else if (options.detailedResponse) {
+  } else {
     detailedData.durationMs = Date.now() - start;
     detailedData.thoughts = thoughts;
   }
@@ -529,9 +408,5 @@ export default async function askOllama(
     console.log("Execution time:", prettyDuration(start), "\n");
   }
 
-  if (options.detailedResponse) {
-    return detailedData;
-  } else {
-    return cleaned;
-  }
+  return detailedData;
 }

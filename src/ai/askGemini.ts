@@ -3,7 +3,6 @@ import process from "node:process";
 import {
   type Candidate,
   type ContentListUnion,
-  type GenerateContentParameters,
   GenerateContentResponse,
   GoogleGenAI,
   HarmBlockThreshold,
@@ -15,7 +14,7 @@ import { formatNumber, prettyDuration } from "@nshiab/journalism-format";
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
-/** The detailed response shape returned when `detailedResponse: true`. */
+/** The detailed response shape returned by {@link askGemini}. */
 export type GeminiDetailedResponse = {
   response: unknown;
   rawResponse: unknown;
@@ -101,10 +100,9 @@ export type GeminiDetailedResponse = {
  *
  * @example
  * ```ts
- * // Detailed response with token usage and estimated cost.
- * const result = await askGemini("What is the capital of France?", {
- *   detailedResponse: true,
- * });
+ * // Access token usage and estimated cost directly from the response.
+ * const result = await askGemini("What is the capital of France?");
+ * console.log(result.response); // "Paris"
  * console.log(`${result.totalTokens} tokens, $${result.estimatedCost}`);
  * ```
  *
@@ -134,7 +132,6 @@ export type GeminiDetailedResponse = {
  * @param options.includeThoughts - Include reasoning thoughts in output.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.safetyEnabled - Override safety filter defaults.
- * @param options.detailedResponse - Return metadata alongside the response.
  * @param options.geminiParameters - Extra params merged into `generateContentStream`.
  * @param options.metrics - Cumulative metrics object updated after each call.
  *
@@ -170,144 +167,8 @@ export default async function askGemini(
     includeThoughts?: boolean;
     temperature?: number;
     safetyEnabled?: boolean;
-    detailedResponse: true;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
-  },
-): Promise<GeminiDetailedResponse>;
-
-/**
- * Interacts with Google's Gemini models to perform a wide range of tasks,
- * from answering questions to analysing multimedia content.
- *
- * **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
- * (Vertex AI) environment variables, or pass credentials directly via options.
- *
- * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
- *
- * **File handling**: local paths and `gs://` GCS URLs are both supported for
- * images, audio, video, PDF, and text.
- *
- * **Web Search Grounding**: set `webSearch: true` to let the model search the
- * web in real time (extra API cost).
- *
- * Temperature defaults to 0 for deterministic responses. Safety filters are
- * on by default (`true`) but off when using Vertex AI (`false`); override
- * with `safetyEnabled`.
- *
- * @param prompt - The primary text prompt.
- * @param options.systemPrompt - Optional system prompt.
- * @param options.model - Model name; defaults to `AI_MODEL` env var.
- * @param options.apiKey - API key; defaults to `AI_KEY` env var.
- * @param options.vertex - Use Vertex AI authentication.
- * @param options.project - GCP project ID; defaults to `AI_PROJECT` env var.
- * @param options.location - GCP location; defaults to `AI_LOCATION` env var.
- * @param options.webSearch - Enable web search grounding (extra cost).
- * @param options.HTMLFrom - URL(s) whose body HTML is appended to the prompt.
- * @param options.image - Path(s) or `gs://` URL(s) to image files.
- * @param options.video - Path(s) or `gs://` URL(s) to video files.
- * @param options.audio - Path(s) or `gs://` URL(s) to audio files.
- * @param options.pdf - Path(s) or `gs://` URL(s) to PDF files.
- * @param options.text - Path(s) or `gs://` URL(s) to text files.
- * @param options.returnJson - Ask the model to return JSON.
- * @param options.parseJson - Auto-parse the JSON response.
- * @param options.schemaJson - Zod JSON schema for structured output.
- * @param options.cache - Cache the response in `.journalism-cache`.
- * @param options.verbose - Log prompt, response, and token usage.
- * @param options.clean - Transform the response before returning.
- * @param options.test - Assert on the response (throws on failure).
- * @param options.thinkingBudget - Reasoning token budget (0 = off, -1 = dynamic).
- * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
- * @param options.includeThoughts - Include reasoning thoughts in output.
- * @param options.temperature - Sampling temperature (default 0).
- * @param options.safetyEnabled - Override safety filter defaults.
- * @param options.detailedResponse - Return metadata alongside the response.
- * @param options.geminiParameters - Extra params merged into `generateContentStream`.
- * @param options.metrics - Cumulative metrics object updated after each call.
- *
- * @category AI
- */
-export default async function askGemini(
-  prompt: string,
-  options?: {
-    systemPrompt?: string;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    webSearch?: boolean;
-    HTMLFrom?: string | string[];
-    /** @deprecated Use the `image` option instead. */
-    screenshotFrom?: string | string[];
-    image?: string | string[];
-    video?: string | string[];
-    audio?: string | string[];
-    pdf?: string | string[];
-    text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
-    schemaJson?: unknown;
-    verbose?: boolean;
-    cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
-    thinkingBudget?: number;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
-    temperature?: number;
-    safetyEnabled?: boolean;
-    detailedResponse?: false;
-    // deno-lint-ignore no-explicit-any
-    geminiParameters?: any;
-    metrics?: {
-      totalCost: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-      totalRequests: number;
-    };
-  },
-): Promise<unknown>;
-
-// Implementation
-export default async function askGemini(
-  prompt: string,
-  options: {
-    systemPrompt?: string;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    webSearch?: boolean;
-    HTMLFrom?: string | string[];
-    /** @deprecated Use the `image` option instead. */
-    screenshotFrom?: string | string[];
-    image?: string | string[];
-    video?: string | string[];
-    audio?: string | string[];
-    pdf?: string | string[];
-    text?: string | string[];
-    returnJson?: boolean;
-    parseJson?: boolean;
-    schemaJson?: unknown;
-    verbose?: boolean;
-    cache?: boolean;
-    test?: ((response: unknown) => void) | ((response: unknown) => void)[];
-    clean?: (response: unknown) => unknown;
-    thinkingBudget?: number;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    includeThoughts?: boolean;
-    temperature?: number;
-    safetyEnabled?: boolean;
-    detailedResponse?: boolean;
-    geminiParameters?: Partial<GenerateContentParameters>;
     metrics?: {
       totalCost: number;
       totalInputTokens: number;
@@ -315,7 +176,7 @@ export default async function askGemini(
       totalRequests: number;
     };
   } = {},
-): Promise<unknown> {
+): Promise<GeminiDetailedResponse> {
   if (options.screenshotFrom) {
     throw new Error(
       "The 'screenshotFrom' option has been removed to reduce dependencies. Please take a screenshot yourself and pass it via the 'image' option.",
@@ -591,10 +452,7 @@ export default async function askGemini(
       verbose: options.verbose,
     });
     if (hit !== null) {
-      if (options.detailedResponse) {
-        return { ...detailedData, response: hit.response, fromCache: true };
-      }
-      return hit.response;
+      return { ...detailedData, response: hit.response, fromCache: true };
     }
   }
 
@@ -626,15 +484,13 @@ export default async function askGemini(
           if (!p.text) {
             continue;
           } else if (p.thought) {
-            if (options.verbose || options.detailedResponse) {
-              if (options.verbose && !thoughts) {
-                process.stdout.write("\nThoughts:\n");
-              }
-              if (options.verbose) {
-                process.stdout.write(p.text);
-              }
-              thoughts += p.text;
+            if (options.verbose && !thoughts) {
+              process.stdout.write("\nThoughts:\n");
             }
+            if (options.verbose) {
+              process.stdout.write(p.text);
+            }
+            thoughts += p.text;
           } else {
             if (options.verbose) {
               if (!returnedResponse) {
@@ -682,10 +538,7 @@ export default async function askGemini(
   detailedData.rawResponse = raw !== cleaned ? raw : undefined;
 
   // Metrics and pricing
-  if (
-    (options.verbose || options.metrics || options.detailedResponse) &&
-    finalUsageMetadata
-  ) {
+  if (finalUsageMetadata) {
     const hasAudio = options.audio ? true : false;
 
     const pricing = [
@@ -820,11 +673,7 @@ export default async function askGemini(
         detailedData.thoughts = thoughts;
         detailedData.thoughtsTokenCount = thoughtsTokenCount;
 
-        if (options.detailedResponse) {
-          return detailedData;
-        } else {
-          return cleaned;
-        }
+        return detailedData;
       }
 
       const promptTokenCost = (promptTokenCount / 1_000_000) * inputRate;
@@ -878,7 +727,7 @@ export default async function askGemini(
         );
       }
     }
-  } else if (options.detailedResponse) {
+  } else {
     detailedData.durationMs = Date.now() - start;
     detailedData.thoughts = thoughts;
   }
@@ -887,9 +736,5 @@ export default async function askGemini(
     console.log("Execution time:", prettyDuration(start), "\n");
   }
 
-  if (options.detailedResponse) {
-    return detailedData;
-  } else {
-    return cleaned;
-  }
+  return detailedData;
 }

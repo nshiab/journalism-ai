@@ -1,9 +1,10 @@
-import askAI from "./askAI.ts";
+import askGemini from "./askGemini.ts";
+import type { GeminiDetailedResponse } from "./askGemini.ts";
 import sleep from "./helpers/sleep.ts";
 import { formatNumber } from "@nshiab/journalism-format";
 
-/** A single request object for {@link askAIPool}, wrapping a prompt and its options. */
-export type askAIRequest = {
+/** A single request object for {@link askGeminiPool}, wrapping a prompt and its options. */
+export type askGeminiRequest = {
   id?: string;
   prompt: string;
   options?: {
@@ -14,12 +15,8 @@ export type askAIRequest = {
     vertex?: boolean;
     project?: string;
     location?: string;
-    // deno-lint-ignore no-explicit-any
-    ollama?: boolean | any;
     webSearch?: boolean;
     HTMLFrom?: string | string[];
-    /** @deprecated Use the `image` option instead. */
-    screenshotFrom?: string | string[];
     image?: string | string[];
     video?: string | string[];
     audio?: string | string[];
@@ -34,19 +31,16 @@ export type askAIRequest = {
       | ((response: unknown) => void)
       | ((response: unknown) => void)[];
     clean?: (response: unknown) => unknown;
-    contextWindow?: number;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     thinkingBudget?: number;
     includeThoughts?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
-    // deno-lint-ignore no-explicit-any
-    ollamaParameters?: any;
   };
 };
 
 /**
- * Processes multiple AI requests concurrently using a pool of workers. This function wraps {@link askAI} and manages parallel execution, retries, progress logging, and error handling for batch operations.
+ * Processes multiple Gemini requests concurrently using a pool of workers. This function wraps {@link askGemini} and manages parallel execution, retries, progress logging, and error handling for batch operations.
  *
  * Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
  *
@@ -171,7 +165,7 @@ export type askAIRequest = {
  * @param requests - An array of request objects to process.
  *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
  *   @param requests[].prompt - The primary text input for the AI model.
- *   @param requests[].options - Options passed to {@link askAI} for each individual request. See {@link askAI} for the full list of available options.
+ *   @param requests[].options - Options passed to {@link askGemini} for each individual request. See {@link askGemini} for the full list of available options.
  * @param poolSize - The number of concurrent workers processing requests.
  * @param poolOptions - Configuration for the pool execution.
  *   @param poolOptions.logProgress - If `true`, logs progress to the console after each completed or failed request. Defaults to `false`.
@@ -183,8 +177,8 @@ export type askAIRequest = {
  *
  * @category AI
  */
-export default async function askAIPool(
-  requests: askAIRequest[],
+export default async function askGeminiPool(
+  requests: askGeminiRequest[],
   poolSize: number,
   poolOptions: {
     logProgress?: boolean;
@@ -201,24 +195,27 @@ export default async function askAIPool(
 ): Promise<{
   results: {
     index: number;
-    request: askAIRequest;
-    result: unknown;
+    request: askGeminiRequest;
+    result: GeminiDetailedResponse;
   }[];
   errors: Array<
     {
       index: number;
-      request: askAIRequest;
+      request: askGeminiRequest;
       error: unknown;
     }
   >;
 }> {
   const maxRetries = poolOptions.retry ?? 0;
-  const results: { index: number; request: askAIRequest; result: unknown }[] =
-    [];
+  const results: {
+    index: number;
+    request: askGeminiRequest;
+    result: GeminiDetailedResponse;
+  }[] = [];
   const errors: Array<
     {
       index: number;
-      request: askAIRequest;
+      request: askGeminiRequest;
       error: unknown;
     }
   > = [];
@@ -238,7 +235,7 @@ export default async function askAIPool(
       const requestStart = Date.now();
 
       try {
-        const result = await askAI(req.prompt, {
+        const result = await askGemini(req.prompt, {
           ...req.options,
           metrics: poolOptions.metrics,
         });
@@ -258,7 +255,7 @@ export default async function askAIPool(
             }`
             : "";
           console.log(
-            `[askAIPool] Request ${index} processed | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}${metricsInfo}`,
+            `[askGeminiPool] Request ${index} processed | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}${metricsInfo}`,
           );
         }
       } catch (error) {
@@ -284,7 +281,9 @@ export default async function askAIPool(
               }`
               : "";
             console.log(
-              `[askAIPool] Request ${index} failed (attempt ${attempt + 1}/${
+              `[askGeminiPool] Request ${index} failed (attempt ${
+                attempt + 1
+              }/${
                 maxRetries + 1
               }) | Duration: ${durationSec}s | Retrying...${metricsInfo}`,
             );
@@ -306,7 +305,7 @@ export default async function askAIPool(
               }`
               : "";
             console.log(
-              `[askAIPool] Request ${index} failed after ${
+              `[askGeminiPool] Request ${index} failed after ${
                 maxRetries + 1
               } attempts | Duration: ${durationSec}s | Outstanding: ${outstanding} | Active: ${activeWorkers}${metricsInfo}`,
             );

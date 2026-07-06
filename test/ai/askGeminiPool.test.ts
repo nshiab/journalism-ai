@@ -1,12 +1,12 @@
 import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
-import askAIPool from "../../src/ai/askAIPool.ts";
+import askGeminiPool from "../../src/ai/askGeminiPool.ts";
 import * as z from "zod";
 
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
   Deno.test("should run the doc example", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -21,7 +21,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
   });
   Deno.test("should use request ids", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { id: "france", prompt: "What is the capital of France?" },
         { id: "germany", prompt: "What is the capital of Germany?" },
@@ -36,7 +36,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[1].request.id, "germany");
   });
   Deno.test("should process requests with options", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me a list of 3 countries in Europe.",
@@ -55,7 +55,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 2);
   });
   Deno.test("should log progress", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -85,7 +85,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       totalOutputTokens: 0,
       totalRequests: 0,
     };
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -103,7 +103,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
   });
   Deno.test("should enforce minimum request duration", async () => {
     const start = Date.now();
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -119,7 +119,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 2);
   });
   Deno.test("should return results sorted by original index", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -135,7 +135,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[2].index, 2);
   });
   Deno.test("should use test and clean options on individual requests", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me a list of 3 countries in Europe.",
@@ -170,7 +170,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 1);
   });
   Deno.test("should use a text file as input", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "What is the content of this text file?",
@@ -185,7 +185,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 1);
   });
   Deno.test("should not ground results with web search", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "Who is Nael Shiab (CBC News)?" },
         { prompt: "Who is Elizabeth Haggarty (CBC News)?" },
@@ -200,7 +200,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
   });
   Deno.test("should ground results with web search", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Who is Nael Shiab (CBC News)?",
@@ -234,7 +234,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       }),
     );
 
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me 5 characters from Harry Potter.",
@@ -265,7 +265,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       totalRequests: 0,
     };
 
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "How do you feel?",
@@ -310,7 +310,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       totalRequests: 0,
     };
 
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "How do you feel?",

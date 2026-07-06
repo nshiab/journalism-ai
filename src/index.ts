@@ -19,13 +19,12 @@
  * ```
  */
 
-import askAI from "./ai/askAI.ts";
-import askAIPool from "./ai/askAIPool.ts";
 import askGemini from "./ai/askGemini.ts";
+import askGeminiPool from "./ai/askGeminiPool.ts";
 import askOllama from "./ai/askOllama.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
 
-export { askAI, askAIPool, askGemini, askOllama, getEmbedding };
-export type { askAIRequest } from "./ai/askAIPool.ts";
+export { askGemini, askGeminiPool, askOllama, getEmbedding };
+export type { askGeminiRequest } from "./ai/askGeminiPool.ts";
 export type { GeminiDetailedResponse } from "./ai/askGemini.ts";
 export type { OllamaDetailedResponse } from "./ai/askOllama.ts";
