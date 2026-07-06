@@ -470,7 +470,7 @@ Deno.test("should throw an error for GCS files (ollama)", async () => {
     () =>
       askOllama(
         `What is in this file?`,
-        { text: "gs://some-bucket/file.csv" },
+        { text: "gs://some-bucket/file.csv", model: "llama3" },
       ),
     Error,
     "Ollama does not support Google Cloud Storage files.",
