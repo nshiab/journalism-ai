@@ -20,7 +20,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
     assertEquals(results[0].result.webSearch, false);
     assertEquals(results[0].result.thinkingLevel, null);
-    assertEquals(results[0].result.safetyEnabled, true);
+    assertEquals(results[0].result.safetyEnabled, false);
   });
   Deno.test("should use request ids", async () => {
     const { results, errors } = await askGeminiPool(
@@ -277,7 +277,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
-  Deno.test("should run with minimal thinking level by default", async () => {
+  Deno.test("should run without thinking level by default", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "How do you feel?" },
