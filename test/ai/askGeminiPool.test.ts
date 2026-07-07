@@ -18,6 +18,9 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
+    assertEquals(results[0].result.thinkingLevel, null);
+    assertEquals(results[0].result.safetyEnabled, true);
   });
   Deno.test("should use request ids", async () => {
     const { results, errors } = await askGeminiPool(
@@ -163,6 +166,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
+    assertEquals(results[0].result.thinkingLevel, "medium");
   });
   Deno.test("should run with high thinking level", async () => {
     const { results, errors } = await askGeminiPool(
@@ -181,6 +186,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.thinkingLevel, "high");
   });
   Deno.test("should use a text file as input", async () => {
     const { results, errors } = await askGeminiPool(
@@ -212,6 +218,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
   });
   Deno.test("should ground results with web search", async () => {
     const { results, errors } = await askGeminiPool(
@@ -235,6 +242,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, true);
   });
   Deno.test("should return structured output", async () => {
     const schema = z.toJSONSchema(

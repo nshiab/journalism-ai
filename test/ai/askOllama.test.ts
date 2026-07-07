@@ -14,6 +14,7 @@ if (ollamaEnv) {
   Deno.test("should use a simple prompt (ollama)", async () => {
     const result = await askOllama("What is the capital of France?");
     console.log(result);
+    assertEquals(result.thinkingLevel, null);
     assertEquals(true, true);
   });
   Deno.test("should use a simple prompt with a high temperature (ollama)", async () => {
@@ -33,6 +34,7 @@ if (ollamaEnv) {
         thinkingLevel: true,
       });
       console.log(result);
+      assertEquals(result.thinkingLevel, true);
       assertEquals(true, true);
     },
   );
@@ -50,6 +52,7 @@ if (ollamaEnv) {
         { thinkingLevel: true, schemaJson: schema },
       );
       console.log(result);
+      assertEquals(result.thinkingLevel, true);
       assertEquals(true, true);
     },
   );
@@ -231,6 +234,7 @@ if (ollamaEnv) {
       { thinkingLevel: "low" },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "low");
     assertEquals(true, true);
   });
   Deno.test("should work with thinking level medium (ollama)", {
@@ -241,8 +245,29 @@ if (ollamaEnv) {
       { thinkingLevel: "medium" },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "medium");
     assertEquals(true, true);
   });
+  Deno.test(
+    "should not use cached response when thinking level changes (ollama)",
+    {
+      sanitizeResources: false,
+    },
+    async () => {
+      const withoutThinking = await askOllama(
+        "Find 12 * 13. Return just the number.",
+        { cache: true },
+      );
+      const withThinking = await askOllama(
+        "Find 12 * 13. Return just the number.",
+        { thinkingLevel: "medium", cache: true },
+      );
+      console.log({ withoutThinking, withThinking });
+      assertEquals(withoutThinking.thinkingLevel, null);
+      assertEquals(withThinking.thinkingLevel, "medium");
+      assertEquals(withThinking.fromCache, false);
+    },
+  );
   Deno.test("should work with thinking level high (ollama)", {
     sanitizeResources: false,
   }, async () => {
@@ -251,6 +276,7 @@ if (ollamaEnv) {
       { thinkingLevel: "high" },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "high");
     assertEquals(true, true);
   });
 } else {

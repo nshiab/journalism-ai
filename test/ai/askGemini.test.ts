@@ -13,6 +13,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
   Deno.test("should use a simple prompt", async () => {
     const result = await askGemini("What is the capital of France?");
     console.log(result);
+    assertEquals(result.thinkingLevel, null);
+    assertEquals(result.safetyEnabled, false);
     assertEquals(true, true);
   });
 
@@ -103,13 +105,30 @@ if (typeof aiKey === "string" && aiKey !== "") {
   Deno.test("should answer without web search", async () => {
     const result = await askGemini("Who is Nael Shiab?");
     console.log(result);
+    assertEquals(result.webSearch, false);
     assertEquals(true, true);
   });
 
   Deno.test("should answer with web search", async () => {
     const result = await askGemini("Who is Nael Shiab?", { webSearch: true });
     console.log(result);
+    assertEquals(result.webSearch, true);
     assertEquals(true, true);
+  });
+
+  Deno.test("should not use cached response when web search changes", async () => {
+    const withoutWebSearch = await askGemini(
+      "What is the latest public role held by Nael Shiab?",
+      { cache: true },
+    );
+    const withWebSearch = await askGemini(
+      "What is the latest public role held by Nael Shiab?",
+      { webSearch: true, cache: true },
+    );
+    console.log({ withoutWebSearch, withWebSearch });
+    assertEquals(withoutWebSearch.webSearch, false);
+    assertEquals(withWebSearch.webSearch, true);
+    assertEquals(withWebSearch.fromCache, false);
   });
 
   Deno.test("should cache web search response", async () => {
@@ -118,6 +137,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       cache: true,
     });
     console.log(result);
+    assertEquals(result.webSearch, true);
     assertEquals(true, true);
   });
 
@@ -127,6 +147,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       cache: true,
     });
     console.log(result);
+    assertEquals(result.webSearch, true);
     assertEquals(result.fromCache, true);
   });
 
@@ -145,6 +166,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       { thinkingLevel: "medium" },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "medium");
     assertEquals(true, true);
   });
 
@@ -154,7 +176,23 @@ if (typeof aiKey === "string" && aiKey !== "") {
       { thinkingLevel: "high", cache: true },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "high");
     assertEquals(true, true);
+  });
+
+  Deno.test("should not use cached response when thinking level changes", async () => {
+    const withoutThinking = await askGemini(
+      "Find 12 * 13. Return just the number.",
+      { cache: true },
+    );
+    const withThinking = await askGemini(
+      "Find 12 * 13. Return just the number.",
+      { thinkingLevel: "medium", cache: true },
+    );
+    console.log({ withoutThinking, withThinking });
+    assertEquals(withoutThinking.thinkingLevel, null);
+    assertEquals(withThinking.thinkingLevel, "medium");
+    assertEquals(withThinking.fromCache, false);
   });
 
   Deno.test("should return cached thinking response", async () => {
@@ -163,15 +201,42 @@ if (typeof aiKey === "string" && aiKey !== "") {
       { thinkingLevel: "high", cache: true },
     );
     console.log(result);
+    assertEquals(result.thinkingLevel, "high");
     assertEquals(result.fromCache, true);
   });
 
-  Deno.test("should accept safetyEnabled option", async () => {
+  Deno.test("should accept safetyEnabled false option", async () => {
     const result = await askGemini("What is the capital of France?", {
       safetyEnabled: false,
     });
     console.log(result);
+    assertEquals(result.safetyEnabled, false);
     assertEquals(true, true);
+  });
+
+  Deno.test("should accept safetyEnabled true option", async () => {
+    const result = await askGemini("What is the capital of France?", {
+      safetyEnabled: true,
+    });
+    console.log(result);
+    assertEquals(result.safetyEnabled, true);
+    assertEquals(true, true);
+  });
+
+  Deno.test("should not use cached response when safetyEnabled changes", async () => {
+    const prompt = "What color is a ripe banana? Return one word.";
+    const withSafety = await askGemini(prompt, {
+      safetyEnabled: true,
+      cache: true,
+    });
+    const withoutSafety = await askGemini(prompt, {
+      safetyEnabled: false,
+      cache: true,
+    });
+    console.log({ withSafety, withoutSafety });
+    assertEquals(withSafety.safetyEnabled, true);
+    assertEquals(withoutSafety.safetyEnabled, false);
+    assertEquals(withoutSafety.fromCache, false);
   });
 
   Deno.test("should use a text file", async () => {

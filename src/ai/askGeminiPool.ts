@@ -201,6 +201,9 @@ export default async function askGeminiPool(
       fromCache: boolean;
       prompt: string;
       systemPrompt: string | null;
+      webSearch: boolean;
+      thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+      safetyEnabled: boolean;
       files: {
         path: string;
         type: "image" | "video" | "audio" | "pdf" | "text";
@@ -253,6 +256,9 @@ export default async function askGeminiPool(
       fromCache: boolean;
       prompt: string;
       systemPrompt: string | null;
+      webSearch: boolean;
+      thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+      safetyEnabled: boolean;
       files: {
         path: string;
         type: "image" | "video" | "audio" | "pdf" | "text";

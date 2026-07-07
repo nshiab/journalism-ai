@@ -25,6 +25,9 @@ type GeminiDetailedResponse = {
   fromCache: boolean;
   prompt: string;
   systemPrompt: string | null;
+  webSearch: boolean;
+  thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+  safetyEnabled: boolean;
   files: GeminiFile[];
   promptTokenCount: number;
   outputTokenCount: number;
@@ -168,6 +171,12 @@ export default async function askGemini(
   prompt: string;
   /** The system prompt sent to the model, or `null` when none was provided. */
   systemPrompt: string | null;
+  /** `true` when web search grounding was enabled for this call. */
+  webSearch: boolean;
+  /** The thinking level sent to the model, or `null` when none was provided. */
+  thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+  /** `true` when Gemini safety filters were enabled for this call. */
+  safetyEnabled: boolean;
   /** Files passed to the model alongside the prompt. */
   files: { path: string; type: "image" | "video" | "audio" | "pdf" | "text" }[];
   /** Number of tokens in the prompt. */
@@ -190,11 +199,18 @@ export default async function askGemini(
   thoughtsTokenCount: number;
 }> {
   const start = Date.now();
+  const usesVertexAI = options.vertex === true ||
+    (!options.apiKey && !options.project && !options.location &&
+      Boolean(process.env.AI_PROJECT && process.env.AI_LOCATION));
+  const safetyEnabled = options.safetyEnabled ?? !usesVertexAI;
 
   const detailedData: GeminiDetailedResponse = {
     response: undefined,
     prompt: prompt,
     systemPrompt: options.systemPrompt ?? null,
+    webSearch: options.webSearch ?? false,
+    thinkingLevel: options.thinkingLevel ?? null,
+    safetyEnabled,
     files: [],
     fromCache: false,
     model: "",
@@ -275,10 +291,11 @@ export default async function askGemini(
 
   detailedData.prompt = prompt;
   detailedData.systemPrompt = options.systemPrompt ?? null;
+  detailedData.webSearch = options.webSearch ?? false;
+  detailedData.thinkingLevel = options.thinkingLevel ?? null;
   detailedData.files = options.files ?? [];
 
-  const safetyEnabled = options.safetyEnabled ??
-    (options.vertex ? false : true);
+  detailedData.safetyEnabled = safetyEnabled;
 
   const safetySettings: SafetySetting[] | undefined = safetyEnabled === false
     ? [
@@ -305,6 +322,9 @@ export default async function askGemini(
     ]
     : undefined;
 
+  const webSearch = options.webSearch ?? false;
+  const thinkingLevel = options.thinkingLevel ?? null;
+
   const params = {
     model,
     contents,
@@ -313,15 +333,15 @@ export default async function askGemini(
       safetySettings,
       responseMimeType: options.schemaJson ? "application/json" : undefined,
       responseJsonSchema: options.schemaJson,
-      thinkingConfig: options.thinkingLevel
+      thinkingConfig: thinkingLevel
         ? {
           thinkingLevel: ThinkingLevel[
-            options.thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
+            thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
           ],
           includeThoughts: true,
         }
         : undefined,
-      tools: options.webSearch ? [{ googleSearch: {} }] : undefined,
+      tools: webSearch ? [{ googleSearch: {} }] : undefined,
     },
   };
 
