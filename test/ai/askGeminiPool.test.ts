@@ -14,8 +14,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -28,7 +27,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       2,
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
@@ -43,7 +42,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
       [
         {
           prompt: "Give me a list of 3 countries in Europe.",
-          options: { schemaJson: schema },
+          options: {
+            schemaJson: schema,
+            systemPrompt: "Answer as a concise travel researcher.",
+          },
         },
         {
           prompt: "Give me a list of 3 countries in Asia.",
@@ -52,10 +54,14 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       2,
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
+    assertEquals(
+      results[0].result.systemPrompt,
+      "Answer as a concise travel researcher.",
+    );
   });
   Deno.test("should log progress", async () => {
     const { results, errors } = await askGeminiPool(
@@ -76,7 +82,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       5,
       { logProgress: true },
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 12);
@@ -99,6 +105,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       (sum, r) => sum + r.result.totalTokens,
       0,
     );
+    console.log({ results, errors });
     console.log("Total cost:", totalCost);
     console.log("Total tokens:", totalTokens);
 
@@ -117,7 +124,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     );
     const duration = Date.now() - start;
     console.log(`Duration: ${duration}ms`);
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
@@ -132,6 +139,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       3,
     );
 
+    console.log({ results, errors });
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
     assertEquals(results[0].index, 0);
@@ -151,8 +159,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       1,
       { logProgress: true },
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -170,8 +177,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       1,
       { logProgress: true },
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -188,7 +194,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       1,
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 1);
@@ -202,8 +208,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -226,8 +231,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -260,8 +264,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
@@ -276,8 +279,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       1,
       { logProgress: true },
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);

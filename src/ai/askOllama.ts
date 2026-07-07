@@ -9,6 +9,7 @@ type OllamaDetailedResponse = {
   response: unknown;
   fromCache: boolean;
   prompt: string;
+  systemPrompt: string | null;
   files: { path: string; type: "image" | "text" }[];
   promptTokenCount: number;
   outputTokenCount: number;
@@ -16,7 +17,7 @@ type OllamaDetailedResponse = {
   tokensPerSecond: number;
   durationMs: number;
   model: string;
-  thoughts: string;
+  thoughts: string | null;
 };
 
 /**
@@ -121,6 +122,8 @@ export default async function askOllama(
   fromCache: boolean;
   /** The primary text prompt (unchanged; text files are sent as separate user messages, images as attachments). */
   prompt: string;
+  /** The system prompt sent to the model, or `null` when none was provided. */
+  systemPrompt: string | null;
   /** Files passed to the model alongside the prompt. */
   files: { path: string; type: "image" | "text" }[];
   /** Number of tokens in the prompt. */
@@ -136,13 +139,14 @@ export default async function askOllama(
   /** The model name used for this call. */
   model: string;
   /** The model's internal reasoning text (only populated when thinking is enabled). */
-  thoughts: string;
+  thoughts: string | null;
 }> {
   const start = Date.now();
 
   const detailedData: OllamaDetailedResponse = {
     response: undefined,
     prompt: prompt,
+    systemPrompt: options.systemPrompt ?? null,
     files: [],
     fromCache: false,
     model: "",
@@ -151,7 +155,7 @@ export default async function askOllama(
     totalTokens: 0,
     tokensPerSecond: 0,
     durationMs: 0,
-    thoughts: "",
+    thoughts: null,
   };
 
   const client = options.ollama instanceof Ollama ? options.ollama : ollama;
@@ -186,6 +190,7 @@ export default async function askOllama(
   }
 
   detailedData.prompt = prompt;
+  detailedData.systemPrompt = options.systemPrompt ?? null;
   detailedData.files = options.files ?? [];
 
   const format = options.schemaJson ? options.schemaJson : undefined;
@@ -228,7 +233,7 @@ export default async function askOllama(
     stream: false,
   });
 
-  const thoughts = result.message.thinking ?? "";
+  const thoughts = result.message.thinking ?? null;
   const returnedResponse = result.message.content ?? "";
 
   // Post-process

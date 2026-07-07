@@ -31,6 +31,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     const totalCost = (r1.estimatedCost ?? 0) + (r2.estimatedCost ?? 0) +
       (r3.estimatedCost ?? 0);
     const totalTokens = r1.totalTokens + r2.totalTokens + r3.totalTokens;
+    console.log({ r1, r2, r3 });
     console.log("Total cost:", totalCost);
     console.log("Total tokens:", totalTokens);
     assertEquals(true, true);
@@ -48,7 +49,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
   });
 
   Deno.test("should cache a response", async () => {
-    await askGemini("What is the capital of France?", { cache: true });
+    const result = await askGemini("What is the capital of France?", {
+      cache: true,
+    });
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -70,10 +74,11 @@ if (typeof aiKey === "string" && aiKey !== "") {
         }),
       ),
     );
-    await askGemini("Give me 10 random people.", {
+    const result = await askGemini("Give me 10 random people.", {
       schemaJson: schema,
       cache: true,
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -96,17 +101,23 @@ if (typeof aiKey === "string" && aiKey !== "") {
   });
 
   Deno.test("should answer without web search", async () => {
-    await askGemini("Who is Nael Shiab?");
+    const result = await askGemini("Who is Nael Shiab?");
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should answer with web search", async () => {
-    await askGemini("Who is Nael Shiab?", { webSearch: true });
+    const result = await askGemini("Who is Nael Shiab?", { webSearch: true });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should cache web search response", async () => {
-    await askGemini("Who is Nael Shiab?", { webSearch: true, cache: true });
+    const result = await askGemini("Who is Nael Shiab?", {
+      webSearch: true,
+      cache: true,
+    });
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -115,6 +126,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       webSearch: true,
       cache: true,
     });
+    console.log(result);
     assertEquals(result.fromCache, true);
   });
 
@@ -123,6 +135,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       systemPrompt: "Always answer with rhymes.",
     });
     console.log(result);
+    assertEquals(result.systemPrompt, "Always answer with rhymes.");
     assertEquals(true, true);
   });
 
@@ -136,10 +149,11 @@ if (typeof aiKey === "string" && aiKey !== "") {
   });
 
   Deno.test("should use thinking level high with cache", async () => {
-    await askGemini(
+    const result = await askGemini(
       "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the number.",
       { thinkingLevel: "high", cache: true },
     );
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -148,20 +162,23 @@ if (typeof aiKey === "string" && aiKey !== "") {
       "Find the sum of all integer bases b > 9 for which 17b is a divisor of 97b. Return just the number.",
       { thinkingLevel: "high", cache: true },
     );
+    console.log(result);
     assertEquals(result.fromCache, true);
   });
 
   Deno.test("should accept safetyEnabled option", async () => {
-    await askGemini("What is the capital of France?", {
+    const result = await askGemini("What is the capital of France?", {
       safetyEnabled: false,
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use a text file", async () => {
-    await askGemini("What is the content of this text file?", {
+    const result = await askGemini("What is the content of this text file?", {
       files: [{ path: "test/data/data.csv", type: "text" }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -194,13 +211,14 @@ if (typeof aiKey === "string" && aiKey !== "") {
         }),
       ),
     );
-    await askGemini(
+    const result = await askGemini(
       "For each image return: name (person if recognizable, else null), description, isPolitician.",
       {
         files: images.map((p) => ({ path: p, type: "image" as const })),
         schemaJson: schema,
       },
     );
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -215,7 +233,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
         }),
       ),
     );
-    await askGemini(
+    const result = await askGemini(
       "Each time a new person talks, create a new object with name, timestamp, main emotion, transcript.",
       {
         files: [{
@@ -225,6 +243,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
         schemaJson: schema,
       },
     );
+    console.log(result);
     assertEquals(true, true);
   });
 
@@ -232,63 +251,69 @@ if (typeof aiKey === "string" && aiKey !== "") {
     const schema = z.toJSONSchema(
       z.array(z.object({ date: z.string(), summary: z.string() })),
     );
-    await askGemini(
+    const result = await askGemini(
       "Return a chronological list of important events with date and brief summary.",
       {
         files: [{ path: "test/data/ai/Piekut-en.pdf", type: "pdf" }],
         schemaJson: schema,
       },
     );
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use an image file from GCS", async () => {
-    await askGemini("What is in this image?", {
+    const result = await askGemini("What is in this image?", {
       files: [{
         path: "gs://nael_test_bucket/journalism-tests/cat.png",
         type: "image",
       }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use a video file from GCS", async () => {
-    await askGemini("What is happening in this video?", {
+    const result = await askGemini("What is happening in this video?", {
       files: [{
         path: "gs://nael_test_bucket/journalism-tests/debate.mp4",
         type: "video",
       }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use a pdf file from GCS", async () => {
-    await askGemini("What is this document about?", {
+    const result = await askGemini("What is this document about?", {
       files: [{
         path: "gs://nael_test_bucket/journalism-tests/piekut.pdf",
         type: "pdf",
       }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use an audio file from GCS", async () => {
-    await askGemini("What is this audio about?", {
+    const result = await askGemini("What is this audio about?", {
       files: [{
         path: "gs://nael_test_bucket/journalism-tests/speech.mp3",
         type: "audio",
       }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 
   Deno.test("should use a text file from GCS", async () => {
-    await askGemini("What is the content of this text file?", {
+    const result = await askGemini("What is the content of this text file?", {
       files: [{
         path: "gs://nael_test_bucket/journalism-tests/data.csv",
         type: "text",
       }],
     });
+    console.log(result);
     assertEquals(true, true);
   });
 } else {

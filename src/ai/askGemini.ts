@@ -24,6 +24,7 @@ type GeminiDetailedResponse = {
   response: unknown;
   fromCache: boolean;
   prompt: string;
+  systemPrompt: string | null;
   files: GeminiFile[];
   promptTokenCount: number;
   outputTokenCount: number;
@@ -32,7 +33,7 @@ type GeminiDetailedResponse = {
   estimatedCost: number | null;
   durationMs: number;
   model: string;
-  thoughts: string;
+  thoughts: string | null;
   thoughtsTokenCount: number;
 };
 
@@ -165,6 +166,8 @@ export default async function askGemini(
   fromCache: boolean;
   /** The primary text prompt sent to the model (unchanged; file contents are sent as separate content parts). */
   prompt: string;
+  /** The system prompt sent to the model, or `null` when none was provided. */
+  systemPrompt: string | null;
   /** Files passed to the model alongside the prompt. */
   files: { path: string; type: "image" | "video" | "audio" | "pdf" | "text" }[];
   /** Number of tokens in the prompt. */
@@ -182,7 +185,7 @@ export default async function askGemini(
   /** The model name used for this call. */
   model: string;
   /** The model's internal reasoning text (only populated when `thinkingLevel` is set). */
-  thoughts: string;
+  thoughts: string | null;
   /** Number of tokens used for internal reasoning. */
   thoughtsTokenCount: number;
 }> {
@@ -191,6 +194,7 @@ export default async function askGemini(
   const detailedData: GeminiDetailedResponse = {
     response: undefined,
     prompt: prompt,
+    systemPrompt: options.systemPrompt ?? null,
     files: [],
     fromCache: false,
     model: "",
@@ -200,7 +204,7 @@ export default async function askGemini(
     tokensPerSecond: 0,
     estimatedCost: null,
     durationMs: 0,
-    thoughts: "",
+    thoughts: null,
     thoughtsTokenCount: 0,
   };
 
@@ -270,6 +274,7 @@ export default async function askGemini(
   }
 
   detailedData.prompt = prompt;
+  detailedData.systemPrompt = options.systemPrompt ?? null;
   detailedData.files = options.files ?? [];
 
   const safetyEnabled = options.safetyEnabled ??
@@ -335,7 +340,7 @@ export default async function askGemini(
     ...(options.geminiParameters ?? {}),
   });
 
-  let thoughts = "";
+  let thoughts: string | null = null;
   let returnedResponse = "";
   const finalUsageMetadata = result.usageMetadata ?? null;
 
@@ -343,7 +348,7 @@ export default async function askGemini(
     if (!p.text) {
       continue;
     } else if (p.thought) {
-      thoughts += p.text;
+      thoughts = (thoughts ?? "") + p.text;
     } else {
       returnedResponse += p.text;
     }

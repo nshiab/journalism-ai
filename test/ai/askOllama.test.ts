@@ -67,10 +67,11 @@ if (ollamaEnv) {
   );
   Deno.test("should use a simple prompt with cache and schema (ollama)", async () => {
     const schema = z.toJSONSchema(z.array(z.string()));
-    await askOllama("Give me a list of 3 countries in Europe.", {
+    const result = await askOllama("Give me a list of 3 countries in Europe.", {
       schemaJson: schema,
       cache: true,
     });
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should return cached schema data (ollama)", async () => {
@@ -108,10 +109,11 @@ if (ollamaEnv) {
         })),
       }),
     );
-    await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people.", {
       cache: true,
       schemaJson: schema,
     });
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should return cached structured output (ollama)", {
@@ -145,7 +147,7 @@ if (ollamaEnv) {
           isPolitician: z.boolean(),
         }),
       );
-      await askOllama(
+      const result = await askOllama(
         "Return an object with: name (person if recognizable, else null), description, isPolitician.",
         {
           files: [{
@@ -156,6 +158,7 @@ if (ollamaEnv) {
           schemaJson: schema,
         },
       );
+      console.log(result);
       assertEquals(true, true);
     },
   );
@@ -180,10 +183,11 @@ if (ollamaEnv) {
       }),
     );
 
-    await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people.", {
       cache: true,
       schemaJson: schema,
     });
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should return a cached structured output", {
@@ -207,40 +211,46 @@ if (ollamaEnv) {
     assertEquals(result.fromCache, true);
   });
   Deno.test("should work without a system prompt", async () => {
-    await askOllama("Why is the sky blue?");
+    const result = await askOllama("Why is the sky blue?");
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should work with a system prompt", async () => {
-    await askOllama("Why is the sky blue?", {
+    const result = await askOllama("Why is the sky blue?", {
       systemPrompt: "Always answer with rhymes.",
     });
+    console.log(result);
+    assertEquals(result.systemPrompt, "Always answer with rhymes.");
     assertEquals(true, true);
   });
   Deno.test("should work with thinking level low (ollama)", {
     sanitizeResources: false,
   }, async () => {
-    await askOllama(
+    const result = await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
       { thinkingLevel: "low" },
     );
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should work with thinking level medium (ollama)", {
     sanitizeResources: false,
   }, async () => {
-    await askOllama(
+    const result = await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
       { thinkingLevel: "medium" },
     );
+    console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should work with thinking level high (ollama)", {
     sanitizeResources: false,
   }, async () => {
-    await askOllama(
+    const result = await askOllama(
       "Give me 10 random people (name, age, nationality, gender, profession). Make sure they are diverse.",
       { thinkingLevel: "high" },
     );
+    console.log(result);
     assertEquals(true, true);
   });
 } else {

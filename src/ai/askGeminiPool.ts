@@ -200,6 +200,7 @@ export default async function askGeminiPool(
       response: unknown;
       fromCache: boolean;
       prompt: string;
+      systemPrompt: string | null;
       files: {
         path: string;
         type: "image" | "video" | "audio" | "pdf" | "text";
@@ -211,7 +212,7 @@ export default async function askGeminiPool(
       estimatedCost: number | null;
       durationMs: number;
       model: string;
-      thoughts: string;
+      thoughts: string | null;
       thoughtsTokenCount: number;
     };
   }[];
@@ -251,6 +252,7 @@ export default async function askGeminiPool(
       response: unknown;
       fromCache: boolean;
       prompt: string;
+      systemPrompt: string | null;
       files: {
         path: string;
         type: "image" | "video" | "audio" | "pdf" | "text";
@@ -262,7 +264,7 @@ export default async function askGeminiPool(
       estimatedCost: number | null;
       durationMs: number;
       model: string;
-      thoughts: string;
+      thoughts: string | null;
       thoughtsTokenCount: number;
     };
   }[] = [];
