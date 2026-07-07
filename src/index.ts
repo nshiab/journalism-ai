@@ -25,6 +25,3 @@ import askOllama from "./ai/askOllama.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
 
 export { askGemini, askGeminiPool, askOllama, getEmbedding };
-export type { askGeminiRequest } from "./ai/askGeminiPool.ts";
-export type { GeminiDetailedResponse } from "./ai/askGemini.ts";
-export type { OllamaDetailedResponse } from "./ai/askOllama.ts";

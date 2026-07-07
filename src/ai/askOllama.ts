@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import process from "node:process";
-import ollama, { type ChatRequest, Ollama } from "ollama";
+import ollama, { Ollama } from "ollama";
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
@@ -105,14 +105,14 @@ export default async function askOllama(
   options: {
     systemPrompt?: string;
     model?: string;
-    ollama?: Ollama;
+    ollama?: unknown;
     files?: { path: string; type: "image" | "text" }[];
     schemaJson?: unknown;
     cache?: boolean;
     contextWindow?: number;
     thinkingLevel?: boolean | "low" | "medium" | "high";
     temperature?: number;
-    ollamaParameters?: Partial<ChatRequest>;
+    ollamaParameters?: unknown;
   } = {},
 ): Promise<{
   /** The model's response, parsed as a JSON value when `schemaJson` was provided, otherwise a plain string. */
@@ -220,7 +220,7 @@ export default async function askOllama(
     messages: params.messages,
     format: params.format,
     options: {
-      temperature: 0,
+      temperature: params.temperature,
       num_ctx: options.contextWindow,
     },
     think: options.thinkingLevel,

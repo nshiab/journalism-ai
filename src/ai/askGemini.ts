@@ -320,10 +320,6 @@ export default async function askGemini(
     },
   };
 
-  if (safetyEnabled === false) {
-    delete params.config?.safetySettings;
-  }
-
   // Cache check
   const cacheFiles = options.cache ? initCache(params) : null;
   if (cacheFiles) {
