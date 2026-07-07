@@ -5,10 +5,11 @@ import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
 /** The detailed response shape returned by {@link askOllama}. */
-export type OllamaDetailedResponse = {
+type OllamaDetailedResponse = {
   response: unknown;
   fromCache: boolean;
   prompt: string;
+  files: { path: string; type: "image" | "text" }[];
   promptTokenCount: number;
   outputTokenCount: number;
   totalTokens: number;
@@ -16,7 +17,6 @@ export type OllamaDetailedResponse = {
   durationMs: number;
   model: string;
   thoughts: string;
-  thoughtsTokenCount: number;
 };
 
 /**
@@ -28,8 +28,8 @@ export type OllamaDetailedResponse = {
  * Pass a custom `Ollama` instance via the `ollama` option to target a
  * non-default host.
  *
- * **Limitations vs Gemini**: audio, video, and PDF are not supported. GCS
- * (`gs://`) URLs are not supported — use local file paths only.
+ * **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
+ * and `"text"` types are supported for now.
  *
  * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
  *
@@ -52,6 +52,14 @@ export type OllamaDetailedResponse = {
  *
  * @example
  * ```ts
+ * // Analyse a local image.
+ * const result = await askOllama("Describe this image.", {
+ *   files: [{ path: "./photo.jpg", type: "image" }],
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
  * // Structured JSON output.
  * import * as z from "zod";
  * const schema = z.toJSONSchema(z.object({ country: z.string(), capital: z.string() }));
@@ -66,7 +74,7 @@ export type OllamaDetailedResponse = {
  * // Enable thinking / reasoning.
  * const result = await askOllama(
  *   "What is 17 * 23?",
- *   { thinkingBudget: 1 },
+ *   { thinkingLevel: "low" },
  * );
  * ```
  *
@@ -82,14 +90,11 @@ export type OllamaDetailedResponse = {
  * @param options.model - Model name; defaults to `AI_MODEL` env var.
  * @param options.ollama - Custom `Ollama` instance targeting a specific host.
  * @param options.systemPrompt - Optional system prompt.
- * @param options.HTMLFrom - URL(s) whose body HTML is appended to the prompt.
- * @param options.image - Local path(s) to image files.
- * @param options.text - Local path(s) to text files.
+ * @param options.files - Files to send alongside the prompt. Only `"image"` and `"text"` types are supported (local paths only; no GCS, audio, video, or PDF). Text files are sent as separate user messages after the prompt; images are sent as attachments to the prompt message.
  * @param options.schemaJson - JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`.
  * @param options.contextWindow - Override the model's context window size.
- * @param options.thinkingBudget - Any non-zero value enables reasoning.
- * @param options.thinkingLevel - Any value enables reasoning.
+ * @param options.thinkingLevel - Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
  *
@@ -101,24 +106,23 @@ export default async function askOllama(
     systemPrompt?: string;
     model?: string;
     ollama?: Ollama;
-    HTMLFrom?: string | string[];
-    image?: string | string[];
-    text?: string | string[];
+    files?: { path: string; type: "image" | "text" }[];
     schemaJson?: unknown;
     cache?: boolean;
     contextWindow?: number;
-    thinkingBudget?: number;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    thinkingLevel?: boolean | "low" | "medium" | "high";
     temperature?: number;
     ollamaParameters?: Partial<ChatRequest>;
   } = {},
 ): Promise<{
-  /** The model's response, parsed as a JS object when `schemaJson` was provided, otherwise a plain string. */
+  /** The model's response, parsed as a JSON value when `schemaJson` was provided, otherwise a plain string. */
   response: unknown;
   /** `true` when the result was served from the local file cache. */
   fromCache: boolean;
-  /** The full prompt sent to the model (including any appended file/HTML content). */
+  /** The primary text prompt (unchanged; text files are sent as separate user messages, images as attachments). */
   prompt: string;
+  /** Files passed to the model alongside the prompt. */
+  files: { path: string; type: "image" | "text" }[];
   /** Number of tokens in the prompt. */
   promptTokenCount: number;
   /** Number of tokens in the model's response. */
@@ -133,14 +137,13 @@ export default async function askOllama(
   model: string;
   /** The model's internal reasoning text (only populated when thinking is enabled). */
   thoughts: string;
-  /** Number of tokens used for internal reasoning (not reported by Ollama; always 0). */
-  thoughtsTokenCount: number;
 }> {
   const start = Date.now();
 
   const detailedData: OllamaDetailedResponse = {
     response: undefined,
     prompt: prompt,
+    files: [],
     fromCache: false,
     model: "",
     promptTokenCount: 0,
@@ -149,7 +152,6 @@ export default async function askOllama(
     tokensPerSecond: 0,
     durationMs: 0,
     thoughts: "",
-    thoughtsTokenCount: 0,
   };
 
   const client = options.ollama instanceof Ollama ? options.ollama : ollama;
@@ -164,78 +166,43 @@ export default async function askOllama(
   detailedData.model = model;
 
   // Build message
-  let promptToBeSent = prompt;
   const message: { role: string; content: string; images?: string[] } = {
     role: "user",
-    content: "",
+    content: prompt,
   };
+  const fileMessages: { role: string; content: string }[] = [];
 
-  if (options.HTMLFrom) {
-    const urls = Array.isArray(options.HTMLFrom)
-      ? options.HTMLFrom
-      : [options.HTMLFrom];
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          },
-        });
-        const fullHtml = await res.text();
-        const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        const html = bodyMatch ? bodyMatch[1] : fullHtml;
-        promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
-      } catch (error: unknown) {
-        console.log(
-          `Problem retrieving body HTML from ${url}:`,
-          JSON.stringify(error),
-        );
-      }
+  for (const { path, type } of options.files ?? []) {
+    if (type === "text") {
+      const textContent = readFileSync(path, { encoding: "utf-8" });
+      fileMessages.push({
+        role: "user",
+        content: `Content from ${path}:\n${textContent}`,
+      });
+    } else if (type === "image") {
+      message.images = message.images ?? [];
+      message.images.push(readFileSync(path, { encoding: "base64" }));
     }
   }
 
-  if (options.text) {
-    const textFiles = Array.isArray(options.text)
-      ? options.text
-      : [options.text];
-    for (const textFile of textFiles) {
-      if (textFile.startsWith("gs://")) {
-        throw new Error(
-          "Ollama does not support Google Cloud Storage files. Please use local file paths.",
-        );
-      }
-      const textContent = readFileSync(textFile, { encoding: "utf-8" });
-      promptToBeSent += `\n\nContent from ${textFile}:\n${textContent}`;
-    }
-  }
-
-  message.content = promptToBeSent;
-
-  if (options.image) {
-    const imageFiles = Array.isArray(options.image)
-      ? options.image
-      : [options.image];
-    message.images = imageFiles.map((imageFile) =>
-      readFileSync(imageFile, { encoding: "base64" })
-    );
-  }
-
-  detailedData.prompt = promptToBeSent;
+  detailedData.prompt = prompt;
+  detailedData.files = options.files ?? [];
 
   const format = options.schemaJson ? options.schemaJson : undefined;
 
   const params = {
     model,
-    messages: options.systemPrompt
-      ? [{ role: "system", content: options.systemPrompt }, message]
-      : [message],
+    messages: [
+      ...(options.systemPrompt
+        ? [{ role: "system", content: options.systemPrompt }]
+        : []),
+      message,
+      ...fileMessages,
+    ],
     format,
     temperature: options.temperature ?? 0,
     contextWindow: options.contextWindow,
-    think: options.thinkingLevel === "minimal"
-      ? "low"
-      : options.thinkingLevel ?? (options.thinkingBudget ?? 0) > 0,
+    think: options.thinkingLevel,
   };
 
   // Cache check
@@ -256,9 +223,7 @@ export default async function askOllama(
       temperature: 0,
       num_ctx: options.contextWindow,
     },
-    think: options.thinkingLevel === "minimal"
-      ? "low"
-      : options.thinkingLevel ?? (options.thinkingBudget ?? 0) > 0,
+    think: options.thinkingLevel,
     ...(options.ollamaParameters ?? {}),
     stream: false,
   });

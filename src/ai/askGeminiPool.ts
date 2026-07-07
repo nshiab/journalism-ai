@@ -1,9 +1,8 @@
 import askGemini from "./askGemini.ts";
-import type { GeminiDetailedResponse } from "./askGemini.ts";
 import sleep from "./helpers/sleep.ts";
 
 /** A single request object for {@link askGeminiPool}, wrapping a prompt and its options. */
-export type askGeminiRequest = {
+type askGeminiRequest = {
   id?: string;
   prompt: string;
   options?: {
@@ -14,15 +13,14 @@ export type askGeminiRequest = {
     project?: string;
     location?: string;
     webSearch?: boolean;
-    HTMLFrom?: string | string[];
-    image?: string | string[];
-    video?: string | string[];
-    audio?: string | string[];
-    pdf?: string | string[];
-    text?: string | string[];
+    files?: {
+      path: string;
+      type: "image" | "video" | "audio" | "pdf" | "text";
+    }[];
     schemaJson?: unknown;
     cache?: boolean;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    safetyEnabled?: boolean;
     // deno-lint-ignore no-explicit-any
     geminiParameters?: any;
   };
@@ -69,8 +67,8 @@ export type askGeminiRequest = {
  * // Enable progress logging and retries.
  * const { results, errors } = await askGeminiPool(
  *   [
- *     { prompt: "Summarize this article.", options: { text: "./article1.txt", schemaJson: schema } },
- *     { prompt: "Summarize this article.", options: { text: "./article2.txt", schemaJson: schema } },
+ *     { prompt: "Summarize this article.", options: { files: [{ path: "./article1.txt", type: "text" }], schemaJson: schema } },
+ *     { prompt: "Summarize this article.", options: { files: [{ path: "./article2.txt", type: "text" }], schemaJson: schema } },
  *   ],
  *   3,
  *   {
@@ -86,7 +84,7 @@ export type askGeminiRequest = {
  * // Use retryCheck to only retry on specific errors.
  * const { results, errors } = await askGeminiPool(
  *   [
- *     { prompt: "Analyze this image.", options: { image: "./photo.jpg", schemaJson: schema } },
+ *     { prompt: "Analyze this image.", options: { files: [{ path: "./photo.jpg", type: "image" }], schemaJson: schema } },
  *   ],
  *   1,
  *   {
@@ -142,7 +140,29 @@ export type askGeminiRequest = {
  * @category AI
  */
 export default async function askGeminiPool(
-  requests: askGeminiRequest[],
+  requests: {
+    id?: string;
+    prompt: string;
+    options?: {
+      systemPrompt?: string;
+      model?: string;
+      apiKey?: string;
+      vertex?: boolean;
+      project?: string;
+      location?: string;
+      webSearch?: boolean;
+      files?: {
+        path: string;
+        type: "image" | "video" | "audio" | "pdf" | "text";
+      }[];
+      schemaJson?: unknown;
+      cache?: boolean;
+      thinkingLevel?: "minimal" | "low" | "medium" | "high";
+      safetyEnabled?: boolean;
+      // deno-lint-ignore no-explicit-any
+      geminiParameters?: any;
+    };
+  }[],
   poolSize: number,
   poolOptions: {
     logProgress?: boolean;
@@ -153,22 +173,98 @@ export default async function askGeminiPool(
 ): Promise<{
   results: {
     index: number;
-    request: askGeminiRequest;
-    result: GeminiDetailedResponse;
+    request: {
+      id?: string;
+      prompt: string;
+      options?: {
+        systemPrompt?: string;
+        model?: string;
+        apiKey?: string;
+        vertex?: boolean;
+        project?: string;
+        location?: string;
+        webSearch?: boolean;
+        files?: {
+          path: string;
+          type: "image" | "video" | "audio" | "pdf" | "text";
+        }[];
+        schemaJson?: unknown;
+        cache?: boolean;
+        thinkingLevel?: "minimal" | "low" | "medium" | "high";
+        safetyEnabled?: boolean;
+        // deno-lint-ignore no-explicit-any
+        geminiParameters?: any;
+      };
+    };
+    result: {
+      response: unknown;
+      fromCache: boolean;
+      prompt: string;
+      files: {
+        path: string;
+        type: "image" | "video" | "audio" | "pdf" | "text";
+      }[];
+      promptTokenCount: number;
+      outputTokenCount: number;
+      totalTokens: number;
+      tokensPerSecond: number;
+      estimatedCost: number | null;
+      durationMs: number;
+      model: string;
+      thoughts: string;
+      thoughtsTokenCount: number;
+    };
   }[];
-  errors: Array<
-    {
-      index: number;
-      request: askGeminiRequest;
-      error: unknown;
-    }
-  >;
+  errors: {
+    index: number;
+    request: {
+      id?: string;
+      prompt: string;
+      options?: {
+        systemPrompt?: string;
+        model?: string;
+        apiKey?: string;
+        vertex?: boolean;
+        project?: string;
+        location?: string;
+        webSearch?: boolean;
+        files?: {
+          path: string;
+          type: "image" | "video" | "audio" | "pdf" | "text";
+        }[];
+        schemaJson?: unknown;
+        cache?: boolean;
+        thinkingLevel?: "minimal" | "low" | "medium" | "high";
+        safetyEnabled?: boolean;
+        // deno-lint-ignore no-explicit-any
+        geminiParameters?: any;
+      };
+    };
+    error: unknown;
+  }[];
 }> {
   const maxRetries = poolOptions.retry ?? 0;
   const results: {
     index: number;
     request: askGeminiRequest;
-    result: GeminiDetailedResponse;
+    result: {
+      response: unknown;
+      fromCache: boolean;
+      prompt: string;
+      files: {
+        path: string;
+        type: "image" | "video" | "audio" | "pdf" | "text";
+      }[];
+      promptTokenCount: number;
+      outputTokenCount: number;
+      totalTokens: number;
+      tokensPerSecond: number;
+      estimatedCost: number | null;
+      durationMs: number;
+      model: string;
+      thoughts: string;
+      thoughtsTokenCount: number;
+    };
   }[] = [];
   const errors: Array<
     {

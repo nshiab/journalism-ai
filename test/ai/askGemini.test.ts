@@ -158,31 +158,9 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(true, true);
   });
 
-  Deno.test("should scrape a web page", async () => {
-    const schema = z.toJSONSchema(
-      z.array(
-        z.object({
-          title: z.string(),
-          date: z.string(),
-          url: z.string(),
-          category: z.string(),
-        }),
-      ),
-    );
-    await askGemini(
-      `Extract executive order titles, dates (yyyy-mm-dd), URLs, and categories.`,
-      {
-        HTMLFrom:
-          "https://www.whitehouse.gov/presidential-actions/executive-orders/",
-        schemaJson: schema,
-      },
-    );
-    assertEquals(true, true);
-  });
-
   Deno.test("should use a text file", async () => {
     await askGemini("What is the content of this text file?", {
-      text: "test/data/data.csv",
+      files: [{ path: "test/data/data.csv", type: "text" }],
     });
     assertEquals(true, true);
   });
@@ -193,7 +171,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
     );
     const result = await askGemini(
       "Return an object with the name of the person talking and an approximate date of the speech.",
-      { audio: "test/data/ai/speech.mp3", schemaJson: schema },
+      {
+        files: [{ path: "test/data/ai/speech.mp3", type: "audio" }],
+        schemaJson: schema,
+      },
     );
     console.log(result);
     assertEquals(true, true);
@@ -215,7 +196,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
     );
     await askGemini(
       "For each image return: name (person if recognizable, else null), description, isPolitician.",
-      { image: images, schemaJson: schema },
+      {
+        files: images.map((p) => ({ path: p, type: "image" as const })),
+        schemaJson: schema,
+      },
     );
     assertEquals(true, true);
   });
@@ -234,7 +218,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
     await askGemini(
       "Each time a new person talks, create a new object with name, timestamp, main emotion, transcript.",
       {
-        video: "test/data/ai/The Ontario leaders' debate in 3 minutes 360.mp4",
+        files: [{
+          path: "test/data/ai/The Ontario leaders' debate in 3 minutes 360.mp4",
+          type: "video",
+        }],
         schemaJson: schema,
       },
     );
@@ -247,42 +234,60 @@ if (typeof aiKey === "string" && aiKey !== "") {
     );
     await askGemini(
       "Return a chronological list of important events with date and brief summary.",
-      { pdf: "test/data/ai/Piekut-en.pdf", schemaJson: schema },
+      {
+        files: [{ path: "test/data/ai/Piekut-en.pdf", type: "pdf" }],
+        schemaJson: schema,
+      },
     );
     assertEquals(true, true);
   });
 
   Deno.test("should use an image file from GCS", async () => {
     await askGemini("What is in this image?", {
-      image: "gs://nael_test_bucket/journalism-tests/cat.png",
+      files: [{
+        path: "gs://nael_test_bucket/journalism-tests/cat.png",
+        type: "image",
+      }],
     });
     assertEquals(true, true);
   });
 
   Deno.test("should use a video file from GCS", async () => {
     await askGemini("What is happening in this video?", {
-      video: "gs://nael_test_bucket/journalism-tests/debate.mp4",
+      files: [{
+        path: "gs://nael_test_bucket/journalism-tests/debate.mp4",
+        type: "video",
+      }],
     });
     assertEquals(true, true);
   });
 
   Deno.test("should use a pdf file from GCS", async () => {
     await askGemini("What is this document about?", {
-      pdf: "gs://nael_test_bucket/journalism-tests/piekut.pdf",
+      files: [{
+        path: "gs://nael_test_bucket/journalism-tests/piekut.pdf",
+        type: "pdf",
+      }],
     });
     assertEquals(true, true);
   });
 
   Deno.test("should use an audio file from GCS", async () => {
     await askGemini("What is this audio about?", {
-      audio: "gs://nael_test_bucket/journalism-tests/speech.mp3",
+      files: [{
+        path: "gs://nael_test_bucket/journalism-tests/speech.mp3",
+        type: "audio",
+      }],
     });
     assertEquals(true, true);
   });
 
   Deno.test("should use a text file from GCS", async () => {
     await askGemini("What is the content of this text file?", {
-      text: "gs://nael_test_bucket/journalism-tests/data.csv",
+      files: [{
+        path: "gs://nael_test_bucket/journalism-tests/data.csv",
+        type: "text",
+      }],
     });
     assertEquals(true, true);
   });

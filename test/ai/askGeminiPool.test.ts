@@ -181,7 +181,9 @@ if (typeof aiKey === "string" && aiKey !== "") {
       [
         {
           prompt: "What is the content of this text file?",
-          options: { text: "test/data/data.csv" },
+          options: {
+            files: [{ path: "test/data/data.csv", type: "text" as const }],
+          },
         },
       ],
       1,

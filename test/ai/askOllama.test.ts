@@ -1,5 +1,5 @@
 import "@std/dotenv/load";
-import { assertEquals, assertRejects } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert";
 import askOllama from "../../src/ai/askOllama.ts";
 import { existsSync, rmSync } from "node:fs";
 import { Ollama } from "ollama";
@@ -30,7 +30,7 @@ if (ollamaEnv) {
     },
     async () => {
       const result = await askOllama("What is the capital of France?", {
-        thinkingBudget: 1,
+        thinkingLevel: true,
       });
       console.log(result);
       assertEquals(true, true);
@@ -47,7 +47,7 @@ if (ollamaEnv) {
       );
       const result = await askOllama(
         "What is the capital of France?",
-        { thinkingBudget: 1, schemaJson: schema },
+        { thinkingLevel: true, schemaJson: schema },
       );
       console.log(result);
       assertEquals(true, true);
@@ -135,36 +135,6 @@ if (ollamaEnv) {
   });
 
   Deno.test(
-    "should scrape a web page (ollama)",
-    { sanitizeResources: false },
-    async () => {
-      await askOllama(
-        `What is this website about?`,
-        {
-          HTMLFrom: "https://www.code-like-a-journalist.com/en",
-          cache: true,
-        },
-      );
-      assertEquals(true, true);
-    },
-  );
-
-  Deno.test(
-    "should scrape a web page with specific context window size (ollama)",
-    { sanitizeResources: false },
-    async () => {
-      await askOllama(
-        `What is this website about?`,
-        {
-          HTMLFrom: "https://www.code-like-a-journalist.com/en",
-          contextWindow: 32000,
-          cache: true,
-        },
-      );
-      assertEquals(true, true);
-    },
-  );
-  Deno.test(
     "should analyze images (ollama)",
     { sanitizeResources: false },
     async () => {
@@ -178,8 +148,11 @@ if (ollamaEnv) {
       await askOllama(
         "Return an object with: name (person if recognizable, else null), description, isPolitician.",
         {
-          image:
-            "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.47 PM.png",
+          files: [{
+            path:
+              "test/data/ai/pictures/Screenshot 2025-03-21 at 1.36.47 PM.png",
+            type: "image" as const,
+          }],
           schemaJson: schema,
         },
       );
@@ -189,7 +162,7 @@ if (ollamaEnv) {
   Deno.test("should use a text file (ollama)", async () => {
     const result = await askOllama(
       "What is the content of this text file?",
-      { text: "test/data/data.csv" },
+      { files: [{ path: "test/data/data.csv", type: "text" as const }] },
     );
     console.log(result);
     assertEquals(true, true);
@@ -273,15 +246,3 @@ if (ollamaEnv) {
 } else {
   console.log("No OLLAMA in process.env");
 }
-
-Deno.test("should throw an error for GCS files (ollama)", async () => {
-  await assertRejects(
-    () =>
-      askOllama(
-        `What is in this file?`,
-        { text: "gs://some-bucket/file.csv", model: "llama3" },
-      ),
-    Error,
-    "Ollama does not support Google Cloud Storage files.",
-  );
-});

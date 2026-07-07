@@ -11,11 +11,20 @@ import {
 import { initCache, readCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
+/** A file entry passed to {@link askGemini} via the `files` option. */
+type GeminiFile = {
+  /** Local path or `gs://` GCS URL to the file. */
+  path: string;
+  /** The file's media type. */
+  type: "image" | "video" | "audio" | "pdf" | "text";
+};
+
 /** The detailed response shape returned by {@link askGemini}. */
-export type GeminiDetailedResponse = {
+type GeminiDetailedResponse = {
   response: unknown;
   fromCache: boolean;
   prompt: string;
+  files: GeminiFile[];
   promptTokenCount: number;
   outputTokenCount: number;
   totalTokens: number;
@@ -29,15 +38,15 @@ export type GeminiDetailedResponse = {
 
 /**
  * Interacts with Google's Gemini models to perform a wide range of tasks,
- * from answering questions to analysing multimedia content.
+ * from answering questions to analyzing multimedia content.
  *
  * **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
  * (Vertex AI) environment variables, or pass credentials directly via options.
  *
  * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
  *
- * **File handling**: local paths and `gs://` GCS URLs are both supported for
- * images, audio, video, PDF, and text.
+ * **File handling**: pass files via `files: [{ path, type }]`. Local paths and
+ * `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
  *
  * **Web Search Grounding**: set `webSearch: true` to let the model search the
  * web in real time (extra API cost).
@@ -88,7 +97,18 @@ export type GeminiDetailedResponse = {
  * ```ts
  * // Analyse a local image.
  * const info = await askGemini("Describe this image.", {
- *   image: "./photo.jpg",
+ *   files: [{ path: "./photo.jpg", type: "image" }],
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Analyse a file stored in Google Cloud Storage.
+ * const result = await askGemini("Summarize this document.", {
+ *   files: [{ path: "gs://my-bucket/report.pdf", type: "pdf" }],
+ *   vertex: true,
+ *   project: "my-gcp-project",
+ *   location: "us-central1",
  * });
  * ```
  *
@@ -108,12 +128,7 @@ export type GeminiDetailedResponse = {
  * @param options.project - GCP project ID; defaults to `AI_PROJECT` env var.
  * @param options.location - GCP location; defaults to `AI_LOCATION` env var.
  * @param options.webSearch - Enable web search grounding (extra cost).
- * @param options.HTMLFrom - URL(s) whose body HTML is appended to the prompt.
- * @param options.image - Path(s) or `gs://` URL(s) to image files.
- * @param options.video - Path(s) or `gs://` URL(s) to video files.
- * @param options.audio - Path(s) or `gs://` URL(s) to audio files.
- * @param options.pdf - Path(s) or `gs://` URL(s) to PDF files.
- * @param options.text - Path(s) or `gs://` URL(s) to text files.
+ * @param options.files - Files to send alongside the prompt, in order. Each entry has a `path` (local path or `gs://` URL) and a `type` (`"image"`, `"video"`, `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content parts after the prompt.
  * @param options.schemaJson - Zod JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`.
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
@@ -132,12 +147,10 @@ export default async function askGemini(
     project?: string;
     location?: string;
     webSearch?: boolean;
-    HTMLFrom?: string | string[];
-    image?: string | string[];
-    video?: string | string[];
-    audio?: string | string[];
-    pdf?: string | string[];
-    text?: string | string[];
+    files?: {
+      path: string;
+      type: "image" | "video" | "audio" | "pdf" | "text";
+    }[];
     schemaJson?: unknown;
     cache?: boolean;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
@@ -146,12 +159,14 @@ export default async function askGemini(
     geminiParameters?: any;
   } = {},
 ): Promise<{
-  /** The model's response, parsed as a JS object when `schemaJson` was provided, otherwise a plain string. */
+  /** The model's response, parsed as a JSON value when `schemaJson` was provided, otherwise a plain string. */
   response: unknown;
   /** `true` when the result was served from the local file cache. */
   fromCache: boolean;
-  /** The full prompt sent to the model (including any appended file/HTML content). */
+  /** The primary text prompt sent to the model (unchanged; file contents are sent as separate content parts). */
   prompt: string;
+  /** Files passed to the model alongside the prompt. */
+  files: { path: string; type: "image" | "video" | "audio" | "pdf" | "text" }[];
   /** Number of tokens in the prompt. */
   promptTokenCount: number;
   /** Number of tokens in the model's response. */
@@ -176,6 +191,7 @@ export default async function askGemini(
   const detailedData: GeminiDetailedResponse = {
     response: undefined,
     prompt: prompt,
+    files: [],
     fromCache: false,
     model: "",
     promptTokenCount: 0,
@@ -224,122 +240,37 @@ export default async function askGemini(
 
   // Build contents
   const contents: ContentListUnion = [];
-  let promptToBeSent = prompt;
 
-  if (options.HTMLFrom) {
-    const urls = Array.isArray(options.HTMLFrom)
-      ? options.HTMLFrom
-      : [options.HTMLFrom];
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          },
-        });
-        const fullHtml = await res.text();
-        const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        const html = bodyMatch ? bodyMatch[1] : fullHtml;
-        promptToBeSent += `\n\nHTML content from ${url}:\n${html}`;
-      } catch (error: unknown) {
-        console.log(
-          `Problem retrieving body HTML from ${url}:`,
-          JSON.stringify(error),
-        );
-      }
-    }
-  }
+  const mimeTypes: Record<string, string> = {
+    image: "image/jpeg",
+    audio: "audio/mp3",
+    video: "video/mp4",
+    pdf: "application/pdf",
+  };
 
-  if (options.text) {
-    const textFiles = Array.isArray(options.text)
-      ? options.text
-      : [options.text];
-    for (const textFile of textFiles) {
-      if (textFile.startsWith("gs://")) {
-        contents.push({
-          fileData: { fileUri: textFile, mimeType: "text/plain" },
-        });
+  contents.push(prompt);
+
+  for (const { path, type } of options.files ?? []) {
+    if (type === "text") {
+      if (path.startsWith("gs://")) {
+        contents.push({ fileData: { fileUri: path, mimeType: "text/plain" } });
       } else {
-        const textContent = readFileSync(textFile, { encoding: "utf-8" });
-        promptToBeSent += `\n\nContent from ${textFile}:\n${textContent}`;
+        const textContent = readFileSync(path, { encoding: "utf-8" });
+        contents.push(textContent);
       }
-    }
-  }
-
-  contents.push(promptToBeSent);
-
-  if (options.audio) {
-    const audioFiles = Array.isArray(options.audio)
-      ? options.audio
-      : [options.audio];
-    for (const audioFile of audioFiles) {
-      if (audioFile.startsWith("gs://")) {
-        contents.push({
-          fileData: { fileUri: audioFile, mimeType: "audio/mp3" },
-        });
+    } else {
+      const mimeType = mimeTypes[type];
+      if (path.startsWith("gs://")) {
+        contents.push({ fileData: { fileUri: path, mimeType } });
       } else {
-        const base64Audio = readFileSync(audioFile, { encoding: "base64" });
-        contents.push({
-          inlineData: { data: base64Audio, mimeType: "audio/mp3" },
-        });
+        const base64Data = readFileSync(path, { encoding: "base64" });
+        contents.push({ inlineData: { data: base64Data, mimeType } });
       }
     }
   }
 
-  if (options.video) {
-    const videoFiles = Array.isArray(options.video)
-      ? options.video
-      : [options.video];
-    for (const videoFile of videoFiles) {
-      if (videoFile.startsWith("gs://")) {
-        contents.push({
-          fileData: { fileUri: videoFile, mimeType: "video/mp4" },
-        });
-      } else {
-        const base64Video = readFileSync(videoFile, { encoding: "base64" });
-        contents.push({
-          inlineData: { data: base64Video, mimeType: "video/mp4" },
-        });
-      }
-    }
-  }
-
-  if (options.pdf) {
-    const pdfFiles = Array.isArray(options.pdf) ? options.pdf : [options.pdf];
-    for (const pdfFile of pdfFiles) {
-      if (pdfFile.startsWith("gs://")) {
-        contents.push({
-          fileData: { fileUri: pdfFile, mimeType: "application/pdf" },
-        });
-      } else {
-        const base64Pdf = readFileSync(pdfFile, { encoding: "base64" });
-        contents.push({
-          inlineData: { data: base64Pdf, mimeType: "application/pdf" },
-        });
-      }
-    }
-  }
-
-  if (options.image) {
-    const imageFiles = Array.isArray(options.image)
-      ? options.image
-      : [options.image];
-    for (const imageFile of imageFiles) {
-      if (imageFile.startsWith("gs://")) {
-        contents.push({
-          fileData: { fileUri: imageFile, mimeType: "image/jpeg" },
-        });
-      } else {
-        const base64Image = readFileSync(imageFile, { encoding: "base64" });
-        contents.push({
-          inlineData: { data: base64Image, mimeType: "image/jpeg" },
-        });
-      }
-    }
-  }
-
-  detailedData.prompt = promptToBeSent;
+  detailedData.prompt = prompt;
+  detailedData.files = options.files ?? [];
 
   const safetyEnabled = options.safetyEnabled ??
     (options.vertex ? false : true);
@@ -430,15 +361,26 @@ export default async function askGemini(
   detailedData.response = response;
 
   // Metrics and pricing
+  const durationMs = Date.now() - start;
+  const promptTokenCount = finalUsageMetadata?.promptTokenCount ?? 0;
+  const outputTokenCount = finalUsageMetadata?.candidatesTokenCount ?? 0;
+  const thoughtsTokenCount = finalUsageMetadata?.thoughtsTokenCount ?? 0;
+  const totalTokens = promptTokenCount + outputTokenCount + thoughtsTokenCount;
+  const tokensPerSecond = totalTokens / (durationMs / 1000);
+
+  detailedData.promptTokenCount = promptTokenCount;
+  detailedData.outputTokenCount = outputTokenCount;
+  detailedData.totalTokens = totalTokens;
+  detailedData.tokensPerSecond = tokensPerSecond;
+  detailedData.durationMs = durationMs;
+  detailedData.thoughts = thoughts;
+  detailedData.thoughtsTokenCount = thoughtsTokenCount;
+
   if (finalUsageMetadata) {
-    const hasAudio = options.audio ? true : false;
+    const hasAudio = options.files?.some((f) => f.type === "audio") ?? false;
 
     const pricing = [
-      {
-        model: "gemini-3.5-flash",
-        input: 1.50,
-        output: 9.00,
-      },
+      { model: "gemini-3.5-flash", input: 1.50, output: 9.00 },
       {
         model: "gemini-3.1-pro",
         tiers: [
@@ -463,72 +405,31 @@ export default async function askGemini(
           { threshold: Infinity, input: 4.00, output: 18.00 },
         ],
       },
-      {
-        model: "gemini-3-flash",
-        input: hasAudio ? 1.00 : 0.50,
-        output: 3.00,
-      },
+      { model: "gemini-3-flash", input: hasAudio ? 1.00 : 0.50, output: 3.00 },
     ];
 
     const modelPricing = pricing.find((p) =>
       p.model === model.replace("-preview", "")
     );
-    if (modelPricing) {
-      const promptTokenCount = finalUsageMetadata.promptTokenCount ?? 0;
-      const outputTokenCount = finalUsageMetadata.candidatesTokenCount ?? 0;
-      const thoughtsTokenCount = finalUsageMetadata.thoughtsTokenCount ?? 0;
 
+    if (modelPricing) {
       let inputRate: number;
       let outputRate: number;
 
       if ("tiers" in modelPricing && modelPricing.tiers) {
-        const tier = modelPricing.tiers.find((t) =>
-          promptTokenCount <= t.threshold
-        ) || modelPricing.tiers[modelPricing.tiers.length - 1];
+        const tiers = modelPricing.tiers;
+        const tier = tiers.find((t) => promptTokenCount <= t.threshold) ??
+          tiers[tiers.length - 1];
         inputRate = tier.input;
         outputRate = tier.output;
-      } else if ("input" in modelPricing && "output" in modelPricing) {
+      } else {
         inputRate = modelPricing.input;
         outputRate = modelPricing.output;
-      } else {
-        const durationMs = Date.now() - start;
-        const totalTokens = promptTokenCount + outputTokenCount +
-          thoughtsTokenCount;
-        const tokensPerSecond = totalTokens / (durationMs / 1000);
-
-        detailedData.promptTokenCount = promptTokenCount;
-        detailedData.outputTokenCount = outputTokenCount;
-        detailedData.totalTokens = totalTokens;
-        detailedData.tokensPerSecond = tokensPerSecond;
-        detailedData.durationMs = durationMs;
-        detailedData.thoughts = thoughts;
-        detailedData.thoughtsTokenCount = thoughtsTokenCount;
-
-        return detailedData;
       }
 
-      const promptTokenCost = (promptTokenCount / 1_000_000) * inputRate;
-      const outputTokenCost = (outputTokenCount / 1_000_000) * outputRate;
-      const estimatedCost = promptTokenCost + outputTokenCost;
-
-      const totalTokens = promptTokenCount + outputTokenCount +
-        thoughtsTokenCount;
-      const durationMs = Date.now() - start;
-      const durationSeconds = durationMs / 1000;
-      const tokensPerSecond = totalTokens / durationSeconds;
-
-      detailedData.promptTokenCount = promptTokenCount;
-      detailedData.outputTokenCount = outputTokenCount;
-      detailedData.totalTokens = totalTokens;
-      detailedData.tokensPerSecond = tokensPerSecond;
-      detailedData.estimatedCost = estimatedCost;
-      detailedData.durationMs = durationMs;
-      detailedData.thoughts = thoughts;
-      detailedData.thoughtsTokenCount = thoughtsTokenCount;
+      detailedData.estimatedCost = (promptTokenCount / 1_000_000) * inputRate +
+        (outputTokenCount / 1_000_000) * outputRate;
     }
-  } else {
-    detailedData.durationMs = Date.now() - start;
-    detailedData.thoughts = thoughts;
   }
 
   if (cacheFiles) {
