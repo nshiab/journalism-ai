@@ -11,6 +11,8 @@ type OllamaDetailedResponse = {
   prompt: string;
   systemPrompt: string | null;
   thinkingLevel: boolean | "low" | "medium" | "high" | null;
+  contextWindow: number | null;
+  temperature: number;
   files: { path: string; type: "image" | "text" }[];
   promptTokenCount: number;
   outputTokenCount: number;
@@ -127,6 +129,10 @@ export default async function askOllama(
   systemPrompt: string | null;
   /** The thinking level sent to the model, or `null` when none was provided. */
   thinkingLevel: boolean | "low" | "medium" | "high" | null;
+  /** The context window sent to the model, or `null` when none was provided. */
+  contextWindow: number | null;
+  /** Sampling temperature sent to the model. */
+  temperature: number;
   /** Files passed to the model alongside the prompt. */
   files: { path: string; type: "image" | "text" }[];
   /** Number of tokens in the prompt. */
@@ -151,6 +157,8 @@ export default async function askOllama(
     prompt: prompt,
     systemPrompt: options.systemPrompt ?? null,
     thinkingLevel: options.thinkingLevel ?? null,
+    contextWindow: options.contextWindow ?? null,
+    temperature: options.temperature ?? 0,
     files: [],
     fromCache: false,
     model: "",
@@ -196,6 +204,8 @@ export default async function askOllama(
   detailedData.prompt = prompt;
   detailedData.systemPrompt = options.systemPrompt ?? null;
   detailedData.thinkingLevel = options.thinkingLevel ?? null;
+  detailedData.contextWindow = options.contextWindow ?? null;
+  detailedData.temperature = options.temperature ?? 0;
   detailedData.files = options.files ?? [];
 
   const format = options.schemaJson ? options.schemaJson : undefined;

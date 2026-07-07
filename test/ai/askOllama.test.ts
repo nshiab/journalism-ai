@@ -11,21 +11,34 @@ if (ollamaEnv) {
   if (existsSync("./.journalism-cache")) {
     rmSync("./.journalism-cache", { recursive: true });
   }
-  Deno.test("should use a simple prompt (ollama)", async () => {
+  Deno.test("should use a simple prompt", async () => {
     const result = await askOllama("What is the capital of France?");
     console.log(result);
     assertEquals(result.thinkingLevel, null);
+    assertEquals(result.contextWindow, null);
+    assertEquals(result.temperature, 0);
     assertEquals(true, true);
   });
-  Deno.test("should use a simple prompt with a high temperature (ollama)", async () => {
+  Deno.test("should use a simple prompt with a high temperature", async () => {
     const result = await askOllama("What is the capital of France?", {
       temperature: 1,
     });
     console.log(result);
+    assertEquals(result.temperature, 1);
+    assertEquals(result.contextWindow, null);
+    assertEquals(true, true);
+  });
+  Deno.test("should use a simple prompt with a context window", async () => {
+    const result = await askOllama("What is the capital of France?", {
+      contextWindow: 4096,
+    });
+    console.log(result);
+    assertEquals(result.contextWindow, 4096);
+    assertEquals(result.temperature, 0);
     assertEquals(true, true);
   });
   Deno.test(
-    "should use a simple prompt with thinking (ollama)",
+    "should use a simple prompt with thinking",
     {
       sanitizeResources: false,
     },
@@ -39,7 +52,7 @@ if (ollamaEnv) {
     },
   );
   Deno.test(
-    "should use a simple prompt with thinking and returning JSON (ollama)",
+    "should use a simple prompt and returning JSON",
     {
       sanitizeResources: false,
     },
@@ -48,16 +61,15 @@ if (ollamaEnv) {
         z.object({ country: z.string(), capital: z.string() }),
       );
       const result = await askOllama(
-        "What is the capital of France?",
-        { thinkingLevel: true, schemaJson: schema },
+        "What is the capital of France? Return JSON.",
+        { schemaJson: schema },
       );
       console.log(result);
-      assertEquals(result.thinkingLevel, true);
       assertEquals(true, true);
     },
   );
   Deno.test(
-    "should use a simple prompt with a different Ollama instance (ollama)",
+    "should use a simple prompt with a different Ollama instance",
     { sanitizeResources: false },
     async () => {
       const ollamaClient = new Ollama({ host: "http://127.0.0.1:11434" });
@@ -68,39 +80,45 @@ if (ollamaEnv) {
       assertEquals(true, true);
     },
   );
-  Deno.test("should use a simple prompt with cache and schema (ollama)", async () => {
+  Deno.test("should use a simple prompt with cache and schema", async () => {
     const schema = z.toJSONSchema(z.array(z.string()));
-    const result = await askOllama("Give me a list of 3 countries in Europe.", {
-      schemaJson: schema,
-      cache: true,
-    });
+    const result = await askOllama(
+      "Give me a list of 3 countries in Europe. Return JSON.",
+      {
+        schemaJson: schema,
+        cache: true,
+      },
+    );
     console.log(result);
     assertEquals(true, true);
   });
-  Deno.test("should return cached schema data (ollama)", async () => {
+  Deno.test("should return cached schema data", async () => {
     const schema = z.toJSONSchema(z.array(z.string()));
-    const result = await askOllama("Give me a list of 3 countries in Europe.", {
-      schemaJson: schema,
-      cache: true,
-    });
+    const result = await askOllama(
+      "Give me a list of 3 countries in Europe. Return JSON.",
+      {
+        schemaJson: schema,
+        cache: true,
+      },
+    );
     console.log(result);
     assertEquals(result.fromCache, true);
   });
-  Deno.test("should use a simple prompt with cache (ollama)", async () => {
+  Deno.test("should use a simple prompt with cache", async () => {
     const result = await askOllama("What is the capital of France?", {
       cache: true,
     });
     console.log(result);
     assertEquals(true, true);
   });
-  Deno.test("should return cached data (ollama)", async () => {
+  Deno.test("should return cached data", async () => {
     const result = await askOllama("What is the capital of France?", {
       cache: true,
     });
     console.log(result);
     assertEquals(result.fromCache, true);
   });
-  Deno.test("should cache and return structured output (ollama)", {
+  Deno.test("should cache and return structured output", {
     sanitizeResources: false,
   }, async () => {
     const schema = z.toJSONSchema(
@@ -112,14 +130,14 @@ if (ollamaEnv) {
         })),
       }),
     );
-    const result = await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people. Return JSON.", {
       cache: true,
       schemaJson: schema,
     });
     console.log(result);
     assertEquals(true, true);
   });
-  Deno.test("should return cached structured output (ollama)", {
+  Deno.test("should return cached structured output", {
     sanitizeResources: false,
   }, async () => {
     const schema = z.toJSONSchema(
@@ -131,7 +149,7 @@ if (ollamaEnv) {
         })),
       }),
     );
-    const result = await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people. Return JSON.", {
       cache: true,
       schemaJson: schema,
     });
@@ -140,7 +158,7 @@ if (ollamaEnv) {
   });
 
   Deno.test(
-    "should analyze images (ollama)",
+    "should analyze images",
     { sanitizeResources: false },
     async () => {
       const schema = z.toJSONSchema(
@@ -151,7 +169,7 @@ if (ollamaEnv) {
         }),
       );
       const result = await askOllama(
-        "Return an object with: name (person if recognizable, else null), description, isPolitician.",
+        "Return an object with: name (person if recognizable, else null), description, isPolitician. Return JSON.",
         {
           files: [{
             path:
@@ -165,7 +183,7 @@ if (ollamaEnv) {
       assertEquals(true, true);
     },
   );
-  Deno.test("should use a text file (ollama)", async () => {
+  Deno.test("should use a text file", async () => {
     const result = await askOllama(
       "What is the content of this text file?",
       { files: [{ path: "test/data/data.csv", type: "text" as const }] },
@@ -186,7 +204,7 @@ if (ollamaEnv) {
       }),
     );
 
-    const result = await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people. Return JSON.", {
       cache: true,
       schemaJson: schema,
     });
@@ -206,7 +224,7 @@ if (ollamaEnv) {
       }),
     );
 
-    const result = await askOllama("Give me 10 random people.", {
+    const result = await askOllama("Give me 10 random people. Return JSON.", {
       cache: true,
       schemaJson: schema,
     });
@@ -214,19 +232,22 @@ if (ollamaEnv) {
     assertEquals(result.fromCache, true);
   });
   Deno.test("should work without a system prompt", async () => {
-    const result = await askOllama("Why is the sky blue?");
+    const result = await askOllama("Why is the sky blue?", {
+      thinkingLevel: "low",
+    });
     console.log(result);
     assertEquals(true, true);
   });
   Deno.test("should work with a system prompt", async () => {
     const result = await askOllama("Why is the sky blue?", {
       systemPrompt: "Always answer with rhymes.",
+      thinkingLevel: "low",
     });
     console.log(result);
     assertEquals(result.systemPrompt, "Always answer with rhymes.");
     assertEquals(true, true);
   });
-  Deno.test("should work with thinking level low (ollama)", {
+  Deno.test("should work with thinking level low", {
     sanitizeResources: false,
   }, async () => {
     const result = await askOllama(
@@ -237,7 +258,7 @@ if (ollamaEnv) {
     assertEquals(result.thinkingLevel, "low");
     assertEquals(true, true);
   });
-  Deno.test("should work with thinking level medium (ollama)", {
+  Deno.test("should work with thinking level medium", {
     sanitizeResources: false,
   }, async () => {
     const result = await askOllama(
@@ -249,7 +270,7 @@ if (ollamaEnv) {
     assertEquals(true, true);
   });
   Deno.test(
-    "should not use cached response when thinking level changes (ollama)",
+    "should not use cached response when thinking level changes",
     {
       sanitizeResources: false,
     },
@@ -268,7 +289,7 @@ if (ollamaEnv) {
       assertEquals(withThinking.fromCache, false);
     },
   );
-  Deno.test("should work with thinking level high (ollama)", {
+  Deno.test("should work with thinking level high", {
     sanitizeResources: false,
   }, async () => {
     const result = await askOllama(
