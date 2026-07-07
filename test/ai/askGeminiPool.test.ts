@@ -1,12 +1,12 @@
 import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
-import askAIPool from "../../src/ai/askAIPool.ts";
+import askGeminiPool from "../../src/ai/askGeminiPool.ts";
 import * as z from "zod";
 
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
   Deno.test("should run the doc example", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -14,21 +14,23 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
+    assertEquals(results[0].result.thinkingLevel, null);
+    assertEquals(results[0].result.safetyEnabled, false);
   });
   Deno.test("should use request ids", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { id: "france", prompt: "What is the capital of France?" },
         { id: "germany", prompt: "What is the capital of Germany?" },
       ],
       2,
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
@@ -36,26 +38,36 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[1].request.id, "germany");
   });
   Deno.test("should process requests with options", async () => {
-    const { results, errors } = await askAIPool(
+    const schema = z.toJSONSchema(
+      z.array(z.string()),
+    );
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me a list of 3 countries in Europe.",
-          options: { returnJson: true },
+          options: {
+            schemaJson: schema,
+            systemPrompt: "Answer as a concise travel researcher.",
+          },
         },
         {
           prompt: "Give me a list of 3 countries in Asia.",
-          options: { returnJson: true },
+          options: { schemaJson: schema },
         },
       ],
       2,
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
+    assertEquals(
+      results[0].result.systemPrompt,
+      "Answer as a concise travel researcher.",
+    );
   });
   Deno.test("should log progress", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -73,37 +85,39 @@ if (typeof aiKey === "string" && aiKey !== "") {
       5,
       { logProgress: true },
     );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 12);
   });
-  Deno.test("should track metrics", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-    const { results, errors } = await askAIPool(
+  Deno.test("should accumulate cost and tokens from pool results", async () => {
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
         { prompt: "What is the capital of Italy?" },
       ],
       2,
-      { metrics, logProgress: true },
+      { logProgress: true },
     );
-    console.log(results);
-    console.log(metrics);
+    const totalCost = results.reduce(
+      (sum, r) => sum + (r.result.estimatedCost ?? 0),
+      0,
+    );
+    const totalTokens = results.reduce(
+      (sum, r) => sum + r.result.totalTokens,
+      0,
+    );
+    console.log({ results, errors });
+    console.log("Total cost:", totalCost);
+    console.log("Total tokens:", totalTokens);
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
-    assertEquals(metrics.totalRequests, 3);
   });
   Deno.test("should enforce minimum request duration", async () => {
     const start = Date.now();
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -113,13 +127,13 @@ if (typeof aiKey === "string" && aiKey !== "") {
     );
     const duration = Date.now() - start;
     console.log(`Duration: ${duration}ms`);
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
   });
   Deno.test("should return results sorted by original index", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
         { prompt: "What is the capital of Germany?" },
@@ -128,64 +142,71 @@ if (typeof aiKey === "string" && aiKey !== "") {
       3,
     );
 
+    console.log({ results, errors });
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
     assertEquals(results[0].index, 0);
     assertEquals(results[1].index, 1);
     assertEquals(results[2].index, 2);
   });
-  Deno.test("should use test and clean options on individual requests", async () => {
-    const { results, errors } = await askAIPool(
+  Deno.test("should use thinking level medium", async () => {
+    const { results, errors } = await askGeminiPool(
+      [
+        { prompt: "How do you feel?", options: { thinkingLevel: "medium" } },
+        { prompt: "Where do you live?", options: { thinkingLevel: "medium" } },
+        {
+          prompt: "Do you have a consciousness?",
+          options: { thinkingLevel: "medium" },
+        },
+      ],
+      1,
+      { logProgress: true },
+    );
+    console.log({ results, errors });
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
+    assertEquals(results[0].result.thinkingLevel, "medium");
+  });
+  Deno.test("should run with high thinking level", async () => {
+    const { results, errors } = await askGeminiPool(
+      [
+        { prompt: "How do you feel?", options: { thinkingLevel: "high" } },
+        { prompt: "Where do you live?", options: { thinkingLevel: "high" } },
+        {
+          prompt: "Do you have a consciousness?",
+          options: { thinkingLevel: "high" },
+        },
+      ],
+      1,
+      { logProgress: true },
+    );
+    console.log({ results, errors });
+
+    assertEquals(errors.length, 0);
+    assertEquals(results.length, 3);
+    assertEquals(results[0].result.thinkingLevel, "high");
+  });
+  Deno.test("should use a text file as input", async () => {
+    const { results, errors } = await askGeminiPool(
       [
         {
-          prompt: "Give me a list of 3 countries in Europe.",
+          prompt: "What is the content of this text file?",
           options: {
-            returnJson: true,
-            clean: (response: unknown) => {
-              if (Array.isArray(response)) {
-                return response.map((item) =>
-                  typeof item === "string" ? item.trim() : item
-                );
-              }
-              return response;
-            },
-            test: (response: unknown) => {
-              if (!Array.isArray(response)) {
-                throw new Error("Response is not an array.");
-              }
-              if (response.length !== 3) {
-                throw new Error(
-                  "Response does not contain exactly three items.",
-                );
-              }
-            },
+            files: [{ path: "test/data/data.csv", type: "text" as const }],
           },
         },
       ],
       1,
     );
-    console.log(results);
-
-    assertEquals(errors.length, 0);
-    assertEquals(results.length, 1);
-  });
-  Deno.test("should use a text file as input", async () => {
-    const { results, errors } = await askAIPool(
-      [
-        {
-          prompt: "What is the content of this text file?",
-          options: { text: "test/data/data.csv" },
-        },
-      ],
-      1,
-    );
-    console.log(results);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 1);
   });
   Deno.test("should not ground results with web search", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         { prompt: "Who is Nael Shiab (CBC News)?" },
         { prompt: "Who is Elizabeth Haggarty (CBC News)?" },
@@ -193,14 +214,14 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, false);
   });
   Deno.test("should ground results with web search", async () => {
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Who is Nael Shiab (CBC News)?",
@@ -217,11 +238,11 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
+    assertEquals(results[0].result.webSearch, true);
   });
   Deno.test("should return structured output", async () => {
     const schema = z.toJSONSchema(
@@ -234,7 +255,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
       }),
     );
 
-    const { results, errors } = await askAIPool(
+    const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "Give me 5 characters from Harry Potter.",
@@ -251,101 +272,22 @@ if (typeof aiKey === "string" && aiKey !== "") {
       ],
       5,
     );
-    console.log(results);
-    console.log(errors);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
-  Deno.test("should run with minimal thinking level by default", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-
-    const { results, errors } = await askAIPool(
+  Deno.test("should run without thinking level by default", async () => {
+    const { results, errors } = await askGeminiPool(
       [
-        {
-          prompt: "How do you feel?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Where do you live?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Do you have a consciousness?",
-          options: {
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
+        { prompt: "How do you feel?" },
+        { prompt: "Where do you live?" },
+        { prompt: "Do you have a consciousness?" },
       ],
       1,
-      { metrics, logProgress: true },
+      { logProgress: true },
     );
-    console.log(results);
-    console.log(errors);
-    console.table(metrics);
-
-    assertEquals(errors.length, 0);
-    assertEquals(results.length, 3);
-  });
-  Deno.test("should run with high thinking level by default", async () => {
-    const metrics = {
-      totalCost: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      totalRequests: 0,
-    };
-
-    const { results, errors } = await askAIPool(
-      [
-        {
-          prompt: "How do you feel?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Where do you live?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-        {
-          prompt: "Do you have a consciousness?",
-          options: {
-            thinkingLevel: "high",
-            model: "gemini-3-flash-preview",
-            verbose: true,
-            includeThoughts: true,
-          },
-        },
-      ],
-      1,
-      { metrics, logProgress: true },
-    );
-    console.log(results);
-    console.log(errors);
-    console.table(metrics);
+    console.log({ results, errors });
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);

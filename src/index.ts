@@ -19,9 +19,9 @@
  * ```
  */
 
-import askAI from "./ai/askAI.ts";
-import askAIPool from "./ai/askAIPool.ts";
+import askGemini from "./ai/askGemini.ts";
+import askGeminiPool from "./ai/askGeminiPool.ts";
+import askOllama from "./ai/askOllama.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
 
-export { askAI, askAIPool, getEmbedding };
-export type { askAIRequest } from "./ai/askAIPool.ts";
+export { askGemini, askGeminiPool, askOllama, getEmbedding };
