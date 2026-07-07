@@ -65,6 +65,10 @@ async function askGemini(
     response: unknown;
     fromCache: boolean;
     prompt: string;
+    systemPrompt: string | null;
+    webSearch: boolean;
+    thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+    safetyEnabled: boolean;
     files: {
       path: string;
       type: "image" | "video" | "audio" | "pdf" | "text";
@@ -76,7 +80,7 @@ async function askGemini(
     estimatedCost: number | null;
     durationMs: number;
     model: string;
-    thoughts: string;
+    thoughts: string | null;
     thoughtsTokenCount: number;
   }
 >;
@@ -240,6 +244,10 @@ async function askGeminiPool(
         response: unknown;
         fromCache: boolean;
         prompt: string;
+        systemPrompt: string | null;
+        webSearch: boolean;
+        thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
+        safetyEnabled: boolean;
         files: {
           path: string;
           type: "image" | "video" | "audio" | "pdf" | "text";
@@ -251,7 +259,7 @@ async function askGeminiPool(
         estimatedCost: number | null;
         durationMs: number;
         model: string;
-        thoughts: string;
+        thoughts: string | null;
         thoughtsTokenCount: number;
       };
     }[];
@@ -467,6 +475,10 @@ async function askOllama(
     response: unknown;
     fromCache: boolean;
     prompt: string;
+    systemPrompt: string | null;
+    thinkingLevel: boolean | "low" | "medium" | "high" | null;
+    contextWindow: number | null;
+    temperature: number;
     files: { path: string; type: "image" | "text" }[];
     promptTokenCount: number;
     outputTokenCount: number;
@@ -474,7 +486,7 @@ async function askOllama(
     tokensPerSecond: number;
     durationMs: number;
     model: string;
-    thoughts: string;
+    thoughts: string | null;
   }
 >;
 ```
