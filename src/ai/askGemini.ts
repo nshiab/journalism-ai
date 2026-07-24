@@ -8,11 +8,11 @@ import {
   type SafetySetting,
   ThinkingLevel,
 } from "@google/genai";
-import { initCache, readCache, writeCache } from "./helpers/cache.ts";
+import { initCache, readAndProcessCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
 /** A file entry passed to {@link askGemini} via the `files` option. */
-type GeminiFile = {
+export type GeminiFile = {
   /** Local path or `gs://` GCS URL to the file. */
   path: string;
   /** The file's media type. */
@@ -20,8 +20,8 @@ type GeminiFile = {
 };
 
 /** The detailed response shape returned by {@link askGemini}. */
-type GeminiDetailedResponse = {
-  response: unknown;
+export type GeminiDetailedResponse<TResponse = unknown> = {
+  response: TResponse;
   fromCache: boolean;
   prompt: string;
   systemPrompt: string | null;
@@ -38,6 +38,27 @@ type GeminiDetailedResponse = {
   model: string;
   thoughts: string | null;
   thoughtsTokenCount: number;
+};
+
+/** Configuration accepted by {@link askGemini}. */
+export type AskGeminiOptions<TResponse = unknown> = {
+  systemPrompt?: string;
+  model?: string;
+  apiKey?: string;
+  vertex?: boolean;
+  project?: string;
+  location?: string;
+  webSearch?: boolean;
+  files?: GeminiFile[];
+  schemaJson?: unknown;
+  cache?: boolean;
+  processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
+  thinkingBudget?: number;
+  thinkingLevel?: "minimal" | "low" | "medium" | "high";
+  temperature?: number;
+  safetyEnabled?: boolean;
+  // deno-lint-ignore no-explicit-any
+  geminiParameters?: any;
 };
 
 /**
@@ -135,76 +156,26 @@ type GeminiDetailedResponse = {
  * @param options.files - Files to send alongside the prompt, in order. Each entry has a `path` (local path or `gs://` URL) and a `type` (`"image"`, `"video"`, `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content parts after the prompt.
  * @param options.schemaJson - Zod JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`.
+ * @param options.processResponse - Transform or validate the response before it is returned. If it rejects a cached response, that cache entry is removed so a retry can generate a fresh response.
+ * @param options.thinkingBudget - Reasoning token budget. Use `0` to disable thinking, `-1` for a dynamic budget, or a positive number for a fixed budget. Ignored when `thinkingLevel` is provided.
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
+ * @param options.temperature - Sampling temperature sent to Gemini.
  * @param options.safetyEnabled - Override safety filter defaults.
  * @param options.geminiParameters - Extra params merged into `generateContent`.
  *
  * @category AI
  */
-export default async function askGemini(
+export default async function askGemini<TResponse = unknown>(
   prompt: string,
-  options: {
-    systemPrompt?: string;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    webSearch?: boolean;
-    files?: {
-      path: string;
-      type: "image" | "video" | "audio" | "pdf" | "text";
-    }[];
-    schemaJson?: unknown;
-    cache?: boolean;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    safetyEnabled?: boolean;
-    // deno-lint-ignore no-explicit-any
-    geminiParameters?: any;
-  } = {},
-): Promise<{
-  /** The model's response, parsed as a JSON value when `schemaJson` was provided, otherwise a plain string. */
-  response: unknown;
-  /** `true` when the result was served from the local file cache. */
-  fromCache: boolean;
-  /** The primary text prompt sent to the model (unchanged; file contents are sent as separate content parts). */
-  prompt: string;
-  /** The system prompt sent to the model, or `null` when none was provided. */
-  systemPrompt: string | null;
-  /** `true` when web search grounding was enabled for this call. */
-  webSearch: boolean;
-  /** The thinking level sent to the model, or `null` when none was provided. */
-  thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
-  /** `true` when Gemini safety filters were enabled for this call. */
-  safetyEnabled: boolean;
-  /** Files passed to the model alongside the prompt. */
-  files: { path: string; type: "image" | "video" | "audio" | "pdf" | "text" }[];
-  /** Number of tokens in the prompt. */
-  promptTokenCount: number;
-  /** Number of tokens in the model's response. */
-  outputTokenCount: number;
-  /** Total tokens (prompt + output + thinking). */
-  totalTokens: number;
-  /** Tokens processed per second. */
-  tokensPerSecond: number;
-  /** Estimated cost in USD, or `null` when the model is not in the pricing table. */
-  estimatedCost: number | null;
-  /** Wall-clock time of the API call in milliseconds. */
-  durationMs: number;
-  /** The model name used for this call. */
-  model: string;
-  /** The model's internal reasoning text (only populated when `thinkingLevel` is set). */
-  thoughts: string | null;
-  /** Number of tokens used for internal reasoning. */
-  thoughtsTokenCount: number;
-}> {
+  options: AskGeminiOptions<TResponse> = {},
+): Promise<GeminiDetailedResponse<TResponse>> {
   const start = Date.now();
   const usesVertexAI = options.vertex === true ||
     (!options.apiKey && !options.project && !options.location &&
       Boolean(process.env.AI_PROJECT && process.env.AI_LOCATION));
   const safetyEnabled = options.safetyEnabled ?? !usesVertexAI;
 
-  const detailedData: GeminiDetailedResponse = {
+  const detailedData: GeminiDetailedResponse<unknown> = {
     response: undefined,
     prompt: prompt,
     systemPrompt: options.systemPrompt ?? null,
@@ -340,7 +311,11 @@ export default async function askGemini(
           ],
           includeThoughts: true,
         }
-        : undefined,
+        : {
+          thinkingBudget: options.thinkingBudget ?? 0,
+          includeThoughts: (options.thinkingBudget ?? 0) !== 0,
+        },
+      temperature: options.temperature ?? 0,
       tools: webSearch ? [{ googleSearch: {} }] : undefined,
     },
   };
@@ -348,9 +323,12 @@ export default async function askGemini(
   // Cache check
   const cacheFiles = options.cache ? initCache(params) : null;
   if (cacheFiles) {
-    const hit = readCache(cacheFiles.cacheFile);
+    const hit = await readAndProcessCache<
+      GeminiDetailedResponse<unknown>,
+      TResponse
+    >(cacheFiles.cacheFile, options.processResponse);
     if (hit !== null) {
-      return { ...(hit as GeminiDetailedResponse), fromCache: true };
+      return { ...hit, fromCache: true };
     }
   }
 
@@ -453,9 +431,13 @@ export default async function askGemini(
     }
   }
 
+  const processedResponse = options.processResponse
+    ? await options.processResponse(detailedData.response)
+    : detailedData.response as TResponse;
+
   if (cacheFiles) {
     writeCache(cacheFiles.cacheFile, detailedData);
   }
 
-  return detailedData;
+  return { ...detailedData, response: processedResponse };
 }

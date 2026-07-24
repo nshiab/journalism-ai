@@ -1,30 +1,45 @@
-import askGemini from "./askGemini.ts";
+import askGemini, {
+  type AskGeminiOptions,
+  type GeminiDetailedResponse,
+} from "./askGemini.ts";
 import sleep from "./helpers/sleep.ts";
 
 /** A single request object for {@link askGeminiPool}, wrapping a prompt and its options. */
-type askGeminiRequest = {
+export type AskGeminiPoolRequest<TResponse = unknown> = {
   id?: string;
   prompt: string;
-  options?: {
-    systemPrompt?: string;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    webSearch?: boolean;
-    files?: {
-      path: string;
-      type: "image" | "video" | "audio" | "pdf" | "text";
-    }[];
-    schemaJson?: unknown;
-    cache?: boolean;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    safetyEnabled?: boolean;
-    // deno-lint-ignore no-explicit-any
-    geminiParameters?: any;
-  };
+  processResponse?: (
+    response: unknown,
+  ) => TResponse | Promise<TResponse>;
+  options?: Omit<AskGeminiOptions<TResponse>, "processResponse">;
 };
+
+/** Configuration for the worker pool. */
+export type AskGeminiPoolOptions = {
+  logProgress?: boolean;
+  retry?: number;
+  retryCheck?: (error: unknown) => Promise<boolean> | boolean;
+  minRequestDurationMs?: number;
+};
+
+/** Results and terminal errors returned by {@link askGeminiPool}. */
+export type AskGeminiPoolResult<TResponse = unknown> = {
+  results: {
+    index: number;
+    request: AskGeminiPoolRequest<TResponse>;
+    result: GeminiDetailedResponse<TResponse>;
+  }[];
+  errors: {
+    index: number;
+    request: AskGeminiPoolRequest<TResponse>;
+    error: unknown;
+  }[];
+};
+
+type AskGeminiExecutor<TResponse> = (
+  prompt: string,
+  options: AskGeminiOptions<TResponse>,
+) => Promise<GeminiDetailedResponse<TResponse>>;
 
 /**
  * Processes multiple Gemini requests concurrently using a pool of workers. This function wraps {@link askGemini} and manages parallel execution, retries, progress logging, and error handling for batch operations.
@@ -128,6 +143,7 @@ type askGeminiRequest = {
  * @param requests - An array of request objects to process.
  *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
  *   @param requests[].prompt - The primary text input for the AI model.
+ *   @param requests[].processResponse - An optional function that transforms or validates the response inside the retry loop. If it throws, the request is retried according to `poolOptions`.
  *   @param requests[].options - Options passed to {@link askGemini} for each individual request. See {@link askGemini} for the full list of available options.
  * @param poolSize - The number of concurrent workers processing requests.
  * @param poolOptions - Configuration for the pool execution.
@@ -139,148 +155,32 @@ type askGeminiRequest = {
  *
  * @category AI
  */
-export default async function askGeminiPool(
-  requests: {
-    id?: string;
-    prompt: string;
-    options?: {
-      systemPrompt?: string;
-      model?: string;
-      apiKey?: string;
-      vertex?: boolean;
-      project?: string;
-      location?: string;
-      webSearch?: boolean;
-      files?: {
-        path: string;
-        type: "image" | "video" | "audio" | "pdf" | "text";
-      }[];
-      schemaJson?: unknown;
-      cache?: boolean;
-      thinkingLevel?: "minimal" | "low" | "medium" | "high";
-      safetyEnabled?: boolean;
-      // deno-lint-ignore no-explicit-any
-      geminiParameters?: any;
-    };
-  }[],
+export default function askGeminiPool<TResponse = unknown>(
+  requests: AskGeminiPoolRequest<TResponse>[],
   poolSize: number,
-  poolOptions: {
-    logProgress?: boolean;
-    retry?: number;
-    retryCheck?: (error: unknown) => Promise<boolean> | boolean;
-    minRequestDurationMs?: number;
-  } = {},
-): Promise<{
-  results: {
-    index: number;
-    request: {
-      id?: string;
-      prompt: string;
-      options?: {
-        systemPrompt?: string;
-        model?: string;
-        apiKey?: string;
-        vertex?: boolean;
-        project?: string;
-        location?: string;
-        webSearch?: boolean;
-        files?: {
-          path: string;
-          type: "image" | "video" | "audio" | "pdf" | "text";
-        }[];
-        schemaJson?: unknown;
-        cache?: boolean;
-        thinkingLevel?: "minimal" | "low" | "medium" | "high";
-        safetyEnabled?: boolean;
-        // deno-lint-ignore no-explicit-any
-        geminiParameters?: any;
-      };
-    };
-    result: {
-      response: unknown;
-      fromCache: boolean;
-      prompt: string;
-      systemPrompt: string | null;
-      webSearch: boolean;
-      thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
-      safetyEnabled: boolean;
-      files: {
-        path: string;
-        type: "image" | "video" | "audio" | "pdf" | "text";
-      }[];
-      promptTokenCount: number;
-      outputTokenCount: number;
-      totalTokens: number;
-      tokensPerSecond: number;
-      estimatedCost: number | null;
-      durationMs: number;
-      model: string;
-      thoughts: string | null;
-      thoughtsTokenCount: number;
-    };
-  }[];
-  errors: {
-    index: number;
-    request: {
-      id?: string;
-      prompt: string;
-      options?: {
-        systemPrompt?: string;
-        model?: string;
-        apiKey?: string;
-        vertex?: boolean;
-        project?: string;
-        location?: string;
-        webSearch?: boolean;
-        files?: {
-          path: string;
-          type: "image" | "video" | "audio" | "pdf" | "text";
-        }[];
-        schemaJson?: unknown;
-        cache?: boolean;
-        thinkingLevel?: "minimal" | "low" | "medium" | "high";
-        safetyEnabled?: boolean;
-        // deno-lint-ignore no-explicit-any
-        geminiParameters?: any;
-      };
-    };
-    error: unknown;
-  }[];
-}> {
+  poolOptions: AskGeminiPoolOptions = {},
+): Promise<AskGeminiPoolResult<TResponse>> {
+  return runAskGeminiPool(requests, poolSize, poolOptions, askGemini);
+}
+
+/** Runs the Gemini worker pool with an injectable executor for deterministic testing. */
+export async function runAskGeminiPool<TResponse = unknown>(
+  requests: AskGeminiPoolRequest<TResponse>[],
+  poolSize: number,
+  poolOptions: AskGeminiPoolOptions,
+  executeRequest: AskGeminiExecutor<TResponse>,
+): Promise<AskGeminiPoolResult<TResponse>> {
   const maxRetries = poolOptions.retry ?? 0;
-  const results: {
+  const results: Array<{
     index: number;
-    request: askGeminiRequest;
-    result: {
-      response: unknown;
-      fromCache: boolean;
-      prompt: string;
-      systemPrompt: string | null;
-      webSearch: boolean;
-      thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
-      safetyEnabled: boolean;
-      files: {
-        path: string;
-        type: "image" | "video" | "audio" | "pdf" | "text";
-      }[];
-      promptTokenCount: number;
-      outputTokenCount: number;
-      totalTokens: number;
-      tokensPerSecond: number;
-      estimatedCost: number | null;
-      durationMs: number;
-      model: string;
-      thoughts: string | null;
-      thoughtsTokenCount: number;
-    };
-  }[] = [];
-  const errors: Array<
-    {
-      index: number;
-      request: askGeminiRequest;
-      error: unknown;
-    }
-  > = [];
+    request: AskGeminiPoolRequest<TResponse>;
+    result: GeminiDetailedResponse<TResponse>;
+  }> = [];
+  const errors: Array<{
+    index: number;
+    request: AskGeminiPoolRequest<TResponse>;
+    error: unknown;
+  }> = [];
   const queue = requests.map((req, index) => ({ req, index, attempt: 0 }));
   let completed = 0;
   let activeWorkers = 0;
@@ -297,8 +197,9 @@ export default async function askGeminiPool(
       const requestStart = Date.now();
 
       try {
-        const result = await askGemini(req.prompt, {
+        const result = await executeRequest(req.prompt, {
           ...req.options,
+          processResponse: req.processResponse,
         });
         results.push({ index, request: req, result });
         completed++;

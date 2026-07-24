@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 
 const CACHE_PATH = "./.journalism-cache";
 
@@ -40,4 +46,38 @@ export function writeCache(
   response: unknown,
 ): void {
   writeFileSync(cacheFile, JSON.stringify(response));
+}
+
+/**
+ * Reads a cached object and optionally transforms its `response`. If the
+ * transform rejects the cached value, the cache entry is removed so a retry
+ * can generate a fresh response.
+ */
+export async function readAndProcessCache<
+  TCached extends { response: unknown },
+  TResponse = TCached["response"],
+>(
+  cacheFile: string,
+  processResponse?: (response: unknown) => TResponse | Promise<TResponse>,
+): Promise<
+  | (Omit<TCached, "response"> & { response: TResponse })
+  | null
+> {
+  const cached = readCache(cacheFile) as TCached | null;
+  if (cached === null) {
+    return null;
+  }
+  if (!processResponse) {
+    return cached as Omit<TCached, "response"> & { response: TResponse };
+  }
+
+  try {
+    return {
+      ...cached,
+      response: await processResponse(cached.response),
+    };
+  } catch (error) {
+    rmSync(cacheFile);
+    throw error;
+  }
 }

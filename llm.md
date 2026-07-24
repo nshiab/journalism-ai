@@ -40,50 +40,10 @@ Safety filters are on by default (`true`) but off when using Vertex AI
 ### Signature
 
 ```typescript
-async function askGemini(
+async function askGemini<TResponse>(
   prompt: string,
-  options?: {
-    systemPrompt?: string;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    webSearch?: boolean;
-    files?: {
-      path: string;
-      type: "image" | "video" | "audio" | "pdf" | "text";
-    }[];
-    schemaJson?: unknown;
-    cache?: boolean;
-    thinkingLevel?: "minimal" | "low" | "medium" | "high";
-    safetyEnabled?: boolean;
-    geminiParameters?: any;
-  },
-): Promise<
-  {
-    response: unknown;
-    fromCache: boolean;
-    prompt: string;
-    systemPrompt: string | null;
-    webSearch: boolean;
-    thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
-    safetyEnabled: boolean;
-    files: {
-      path: string;
-      type: "image" | "video" | "audio" | "pdf" | "text";
-    }[];
-    promptTokenCount: number;
-    outputTokenCount: number;
-    totalTokens: number;
-    tokensPerSecond: number;
-    estimatedCost: number | null;
-    durationMs: number;
-    model: string;
-    thoughts: string | null;
-    thoughtsTokenCount: number;
-  }
->;
+  options?: AskGeminiOptions<TResponse>,
+): Promise<GeminiDetailedResponse<TResponse>>;
 ```
 
 ### Parameters
@@ -102,8 +62,15 @@ async function askGemini(
   parts after the prompt.
 - **`options.schemaJson`**: Zod JSON schema for structured output.
 - **`options.cache`**: Cache the response in `.journalism-cache`.
+- **`options.processResponse`**: Transform or validate the response before it is
+  returned. If it rejects a cached response, that cache entry is removed so a
+  retry can generate a fresh response.
+- **`options.thinkingBudget`**: Reasoning token budget. Use `0` to disable
+  thinking, `-1` for a dynamic budget, or a positive number for a fixed budget.
+  Ignored when `thinkingLevel` is provided.
 - **`options.thinkingLevel`**: Thinking level: "minimal" | "low" | "medium" |
   "high".
+- **`options.temperature`**: Sampling temperature sent to Gemini.
 - **`options.safetyEnabled`**: Override safety filter defaults.
 - **`options.geminiParameters`**: Extra params merged into `generateContent`.
 
@@ -184,113 +151,11 @@ to inputs.
 ### Signature
 
 ```typescript
-async function askGeminiPool(
-  requests: {
-    id?: string;
-    prompt: string;
-    options?: {
-      systemPrompt?: string;
-      model?: string;
-      apiKey?: string;
-      vertex?: boolean;
-      project?: string;
-      location?: string;
-      webSearch?: boolean;
-      files?: {
-        path: string;
-        type: "image" | "video" | "audio" | "pdf" | "text";
-      }[];
-      schemaJson?: unknown;
-      cache?: boolean;
-      thinkingLevel?: "minimal" | "low" | "medium" | "high";
-      safetyEnabled?: boolean;
-      geminiParameters?: any;
-    };
-  }[],
+function askGeminiPool<TResponse>(
+  requests: AskGeminiPoolRequest<TResponse>[],
   poolSize: number,
-  poolOptions?: {
-    logProgress?: boolean;
-    retry?: number;
-    retryCheck?: (error: unknown) => Promise<boolean> | boolean;
-    minRequestDurationMs?: number;
-  },
-): Promise<
-  {
-    results: {
-      index: number;
-      request: {
-        id?: string;
-        prompt: string;
-        options?: {
-          systemPrompt?: string;
-          model?: string;
-          apiKey?: string;
-          vertex?: boolean;
-          project?: string;
-          location?: string;
-          webSearch?: boolean;
-          files?: {
-            path: string;
-            type: "image" | "video" | "audio" | "pdf" | "text";
-          }[];
-          schemaJson?: unknown;
-          cache?: boolean;
-          thinkingLevel?: "minimal" | "low" | "medium" | "high";
-          safetyEnabled?: boolean;
-          geminiParameters?: any;
-        };
-      };
-      result: {
-        response: unknown;
-        fromCache: boolean;
-        prompt: string;
-        systemPrompt: string | null;
-        webSearch: boolean;
-        thinkingLevel: "minimal" | "low" | "medium" | "high" | null;
-        safetyEnabled: boolean;
-        files: {
-          path: string;
-          type: "image" | "video" | "audio" | "pdf" | "text";
-        }[];
-        promptTokenCount: number;
-        outputTokenCount: number;
-        totalTokens: number;
-        tokensPerSecond: number;
-        estimatedCost: number | null;
-        durationMs: number;
-        model: string;
-        thoughts: string | null;
-        thoughtsTokenCount: number;
-      };
-    }[];
-    errors: {
-      index: number;
-      request: {
-        id?: string;
-        prompt: string;
-        options?: {
-          systemPrompt?: string;
-          model?: string;
-          apiKey?: string;
-          vertex?: boolean;
-          project?: string;
-          location?: string;
-          webSearch?: boolean;
-          files?: {
-            path: string;
-            type: "image" | "video" | "audio" | "pdf" | "text";
-          }[];
-          schemaJson?: unknown;
-          cache?: boolean;
-          thinkingLevel?: "minimal" | "low" | "medium" | "high";
-          safetyEnabled?: boolean;
-          geminiParameters?: any;
-        };
-      };
-      error: unknown;
-    }[];
-  }
->;
+  poolOptions?: AskGeminiPoolOptions,
+): Promise<AskGeminiPoolResult<TResponse>>;
 ```
 
 ### Parameters
@@ -299,6 +164,9 @@ async function askGeminiPool(
 - **`requests[].id`**: An optional identifier for the request, useful for
   matching results back to inputs.
 - **`requests[].prompt`**: The primary text input for the AI model.
+- **`requests[].processResponse`**: An optional function that transforms or
+  validates the response inside the retry loop. If it throws, the request is
+  retried according to `poolOptions`.
 - **`requests[].options`**: Options passed to {@link askGemini} for each
   individual request. See {@link askGemini} for the full list of available
   options.
@@ -571,16 +439,17 @@ This function supports both Google's Gemini AI models and local models running
 with Ollama. It provides options for authentication, model selection, and
 caching to optimize performance and cost.
 
-**Authentication**: Credentials and model information can be provided via
-environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`,
-`AI_EMBEDDINGS_MODEL`) or directly through the `options` object. Options take
-precedence over environment variables.
+**Authentication**: Credentials, model information, and provider selection can
+be provided via environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`,
+`AI_EMBEDDINGS_MODEL`, `AI_EMBEDDINGS_PROVIDER`) or directly through the
+`options` object. Options take precedence over environment variables.
 
-**Local Models**: To use a local model with Ollama, set the `OLLAMA` environment
-variable to `true` and ensure Ollama is running on your machine. You will also
-need to specify the model name using the `AI_EMBEDDINGS_MODEL` environment
-variable or the `model` option. If you want your Ollama instance to be used, you
-can pass an instance of the `Ollama` class as the `ollama` option.
+**Local Models**: To use a local model with Ollama, set
+`AI_EMBEDDINGS_PROVIDER=ollama` (or the legacy `OLLAMA=true`) and ensure Ollama
+is running on your machine. You will also need to specify the model name using
+the `AI_EMBEDDINGS_MODEL` environment variable or the `model` option. If you
+want your Ollama instance to be used, you can pass an instance of the `Ollama`
+class as the `ollama` option.
 
 **Caching**: To save resources and time, you can enable caching by setting
 `cache` to `true`. Responses will be stored in a local `.journalism-cache`
@@ -594,6 +463,7 @@ your `.gitignore` file.
 async function getEmbedding(
   text: string,
   options?: {
+    provider?: EmbeddingProvider;
     model?: string;
     apiKey?: string;
     vertex?: boolean;
@@ -611,6 +481,9 @@ async function getEmbedding(
 
 - **`text`**: The input text string for which to generate the embedding.
 - **`options`**: Configuration options for the embedding generation.
+- **`options.provider`**: The embedding provider. Defaults to
+  `AI_EMBEDDINGS_PROVIDER`, then falls back to Ollama when `OLLAMA` is set and
+  Gemini otherwise.
 - **`options.model`**: The specific embedding model to use (e.g.,
   'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment
   variable.

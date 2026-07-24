@@ -4,6 +4,19 @@ import { GoogleGenAI } from "@google/genai";
 import ollama, { Ollama } from "ollama";
 import crypto from "node:crypto";
 import { prettyDuration } from "@nshiab/journalism-format";
+import resolveEmbeddingProvider, {
+  type EmbeddingProvider,
+} from "./helpers/resolveEmbeddingProvider.ts";
+
+/** Returns the request fields that determine an embedding cache entry. */
+export function getEmbeddingCacheParams(
+  text: string,
+  model: string,
+  provider: EmbeddingProvider,
+  contextWindow?: number,
+) {
+  return { provider, text, model, contextWindow };
+}
 
 /**
  * Generates a numerical embedding (vector representation) for a given text string. Embeddings are crucial for various natural language processing (NLP) tasks, including semantic search, text classification, clustering, and anomaly detection, as they allow text to be processed and compared mathematically.
@@ -11,16 +24,17 @@ import { prettyDuration } from "@nshiab/journalism-format";
  * This function supports both Google's Gemini AI models and local models running with Ollama. It provides options for authentication, model selection, and caching to optimize performance and cost.
  *
  * **Authentication**:
- * Credentials and model information can be provided via environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`, `AI_EMBEDDINGS_MODEL`) or directly through the `options` object. Options take precedence over environment variables.
+ * Credentials, model information, and provider selection can be provided via environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`, `AI_EMBEDDINGS_MODEL`, `AI_EMBEDDINGS_PROVIDER`) or directly through the `options` object. Options take precedence over environment variables.
  *
  * **Local Models**:
- * To use a local model with Ollama, set the `OLLAMA` environment variable to `true` and ensure Ollama is running on your machine. You will also need to specify the model name using the `AI_EMBEDDINGS_MODEL` environment variable or the `model` option. If you want your Ollama instance to be used, you can pass an instance of the `Ollama` class as the `ollama` option.
+ * To use a local model with Ollama, set `AI_EMBEDDINGS_PROVIDER=ollama` (or the legacy `OLLAMA=true`) and ensure Ollama is running on your machine. You will also need to specify the model name using the `AI_EMBEDDINGS_MODEL` environment variable or the `model` option. If you want your Ollama instance to be used, you can pass an instance of the `Ollama` class as the `ollama` option.
  *
  * **Caching**:
  * To save resources and time, you can enable caching by setting `cache` to `true`. Responses will be stored in a local `.journalism-cache` directory. If the same request is made again, the cached response will be returned, avoiding redundant API calls. Remember to add `.journalism-cache` to your `.gitignore` file.
  *
  * @param text The input text string for which to generate the embedding.
  * @param options Configuration options for the embedding generation.
+ * @param options.provider The embedding provider. Defaults to `AI_EMBEDDINGS_PROVIDER`, then falls back to Ollama when `OLLAMA` is set and Gemini otherwise.
  * @param options.model The specific embedding model to use (e.g., 'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment variable.
  * @param options.apiKey Your API key for authentication with Google Gemini. Defaults to the `AI_KEY` environment variable.
  * @param options.vertex If `true`, uses Vertex AI for authentication. Defaults to `false`.
@@ -63,6 +77,7 @@ import { prettyDuration } from "@nshiab/journalism-format";
  * @category AI
  */
 export default async function getEmbedding(text: string, options: {
+  provider?: EmbeddingProvider;
   model?: string;
   apiKey?: string;
   vertex?: boolean;
@@ -76,10 +91,9 @@ export default async function getEmbedding(text: string, options: {
 } = {}): Promise<number[]> {
   const start = Date.now();
   let client;
-  const ollamaVar = options.ollama === true ||
-    options.ollama instanceof Ollama || process.env.OLLAMA;
+  const provider = resolveEmbeddingProvider(options);
 
-  if (ollamaVar) {
+  if (provider === "ollama") {
     client = options.ollama instanceof Ollama ? options.ollama : ollama;
   } else if (
     options.vertex || options.apiKey || options.project || options.location
@@ -104,7 +118,7 @@ export default async function getEmbedding(text: string, options: {
 
   if (!client) {
     throw new Error(
-      "No API key or project/location or Ollama found. Please set AI_KEY, AI_PROJECT, AI_LOCATION or OLLAMA in your environment variables or pass them as options.",
+      "No Gemini credentials found. Set AI_KEY, or AI_PROJECT and AI_LOCATION. To use Ollama instead, set AI_EMBEDDINGS_PROVIDER=ollama (the legacy OLLAMA variable is also supported), or pass matching options.",
     );
   }
 
@@ -120,10 +134,12 @@ export default async function getEmbedding(text: string, options: {
     console.log(text.length > 50 ? `${text.slice(0, 50)}...` : text);
   }
 
-  const params = {
+  const params = getEmbeddingCacheParams(
     text,
     model,
-  };
+    provider,
+    options.contextWindow,
+  );
 
   let cacheFileJSON;
   if (options.cache) {

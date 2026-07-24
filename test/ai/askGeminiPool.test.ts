@@ -1,7 +1,106 @@
 import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
-import askGeminiPool from "../../src/ai/askGeminiPool.ts";
+import askGeminiPool, { runAskGeminiPool } from "../../src/ai/askGeminiPool.ts";
+import type {
+  AskGeminiOptions,
+  GeminiDetailedResponse,
+} from "../../src/ai/askGemini.ts";
 import * as z from "zod";
+
+function fakeGeminiResult<TResponse>(
+  response: TResponse,
+): GeminiDetailedResponse<TResponse> {
+  return {
+    response,
+    fromCache: false,
+    prompt: "prompt",
+    systemPrompt: null,
+    webSearch: false,
+    thinkingLevel: null,
+    safetyEnabled: false,
+    files: [],
+    promptTokenCount: 0,
+    outputTokenCount: 0,
+    totalTokens: 0,
+    tokensPerSecond: 0,
+    estimatedCost: null,
+    durationMs: 0,
+    model: "test",
+    thoughts: null,
+    thoughtsTokenCount: 0,
+  };
+}
+
+Deno.test("retries synchronous response validation and preserves its type", async () => {
+  let attempts = 0;
+  const executeRequest = async (
+    _prompt: string,
+    options: AskGeminiOptions<{ value: string }>,
+  ) => {
+    const response = options.processResponse
+      ? await options.processResponse("raw")
+      : { value: "raw" };
+    return fakeGeminiResult(response);
+  };
+
+  const { results, errors } = await runAskGeminiPool(
+    [{
+      prompt: "prompt",
+      processResponse: () => {
+        attempts++;
+        if (attempts === 1) {
+          throw new Error("retry");
+        }
+        return { value: "processed" };
+      },
+    }],
+    1,
+    { retry: 1 },
+    executeRequest,
+  );
+
+  assertEquals(errors.length, 0);
+  assertEquals(results[0].result.response.value, "processed");
+  assertEquals(attempts, 2);
+});
+
+Deno.test("supports async response processing and terminal failures", async () => {
+  const executeRequest = async (
+    _prompt: string,
+    options: AskGeminiOptions<string>,
+  ) => {
+    const response = options.processResponse
+      ? await options.processResponse("raw")
+      : "raw";
+    return fakeGeminiResult(response);
+  };
+
+  const successful = await runAskGeminiPool(
+    [{
+      prompt: "prompt",
+      processResponse: async (response) => `${response}-processed`,
+    }],
+    1,
+    {},
+    executeRequest,
+  );
+  const failed = await runAskGeminiPool(
+    [{
+      prompt: "prompt",
+      processResponse: () => {
+        throw new Error("terminal");
+      },
+    }],
+    1,
+    { retry: 1 },
+    executeRequest,
+  );
+
+  assertEquals(successful.results[0].result.response, "raw-processed");
+  assertEquals(failed.results.length, 0);
+  assertEquals(failed.errors.length, 1);
+  assertEquals((failed.errors[0].error as Error).message, "terminal");
+});
 
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
@@ -65,6 +164,30 @@ if (typeof aiKey === "string" && aiKey !== "") {
       results[0].result.systemPrompt,
       "Answer as a concise travel researcher.",
     );
+  });
+  Deno.test("should process responses inside the retry loop", async () => {
+    let attempts = 0;
+    const { results, errors } = await askGeminiPool(
+      [
+        {
+          prompt: "Reply with the word ready.",
+          processResponse: () => {
+            attempts++;
+            if (attempts === 1) {
+              throw new Error("Try the response again.");
+            }
+            return "processed";
+          },
+          options: { cache: true },
+        },
+      ],
+      1,
+      { retry: 1 },
+    );
+
+    assertEquals(errors.length, 0);
+    assertEquals(results[0].result.response, "processed");
+    assertEquals(attempts, 2);
   });
   Deno.test("should log progress", async () => {
     const { results, errors } = await askGeminiPool(
