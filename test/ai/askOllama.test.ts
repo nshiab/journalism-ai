@@ -1,10 +1,65 @@
 import "@std/dotenv/load";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals, assertRejects } from "jsr:@std/assert";
 import askOllama from "../../src/ai/askOllama.ts";
 import { existsSync, rmSync } from "node:fs";
 import { Ollama } from "ollama";
 import * as z from "zod";
 import { initCache, writeCache } from "../../src/ai/helpers/cache.ts";
+
+function createFakeOllama(
+  content: string,
+  onChat?: (parameters: unknown) => void,
+): Ollama {
+  const client = new Ollama();
+  Object.defineProperty(client, "chat", {
+    value: (parameters: unknown) => {
+      onChat?.(parameters);
+      return Promise.resolve({
+        message: { role: "assistant", content },
+        prompt_eval_count: 0,
+        eval_count: 0,
+      });
+    },
+  });
+  return client;
+}
+
+Deno.test("grounds Ollama structured responses with the JSON schema", async () => {
+  const schema = z.toJSONSchema(
+    z.array(z.object({ country: z.string(), population: z.string() })),
+  );
+  let request: unknown;
+  const client = createFakeOllama(
+    '[{"country":"Morocco","population":"1,000,000"}]',
+    (parameters) => request = parameters,
+  );
+
+  await askOllama("Describe Marrakech.", {
+    model: "test-only-model",
+    ollama: client,
+    schemaJson: schema,
+  });
+
+  const messages = (request as { messages: { content: string }[] }).messages;
+  assertEquals(messages[0].content.includes(JSON.stringify(schema)), true);
+});
+
+Deno.test("rejects Ollama responses that do not match the JSON schema", async () => {
+  const schema = z.toJSONSchema(
+    z.array(z.object({ country: z.string(), population: z.string() })),
+  );
+  const client = createFakeOllama(
+    '[{"country":"Morocco","population":1000000}]',
+  );
+
+  await assertRejects(() =>
+    askOllama("Describe Marrakech.", {
+      model: "test-only-model",
+      ollama: client,
+      schemaJson: schema,
+    })
+  );
+});
 
 Deno.test("processes cached Ollama responses without a live server", async () => {
   const originalDirectory = Deno.cwd();
