@@ -4,6 +4,40 @@ import askOllama from "../../src/ai/askOllama.ts";
 import { existsSync, rmSync } from "node:fs";
 import { Ollama } from "ollama";
 import * as z from "zod";
+import { initCache, writeCache } from "../../src/ai/helpers/cache.ts";
+
+Deno.test("processes cached Ollama responses without a live server", async () => {
+  const originalDirectory = Deno.cwd();
+  const temporaryDirectory = Deno.makeTempDirSync();
+  Deno.chdir(temporaryDirectory);
+  const prompt = "deterministic cached response processor test";
+  const model = "test-only-model";
+  const { cacheFile } = initCache({
+    model,
+    messages: [{ role: "user", content: prompt }],
+    format: undefined,
+    temperature: 0,
+    contextWindow: undefined,
+    think: undefined,
+  });
+  writeCache(cacheFile, {
+    response: "cached response",
+    fromCache: false,
+  });
+
+  try {
+    const result = await askOllama<string>(prompt, {
+      model,
+      cache: true,
+      processResponse: (response) => String(response).toUpperCase(),
+    });
+    assertEquals(result.response, "CACHED RESPONSE");
+    assertEquals(result.fromCache, true);
+  } finally {
+    Deno.chdir(originalDirectory);
+    rmSync(temporaryDirectory, { recursive: true });
+  }
+});
 
 const ollamaEnv = Deno.env.get("OLLAMA");
 console.log("OLLAMA", ollamaEnv);

@@ -35,4 +35,8 @@ export type {
   AskGeminiPoolRequest,
   AskGeminiPoolResult,
 } from "./ai/askGeminiPool.ts";
+export type {
+  AskOllamaOptions,
+  OllamaDetailedResponse,
+} from "./ai/askOllama.ts";
 export type { EmbeddingProvider } from "./ai/helpers/resolveEmbeddingProvider.ts";

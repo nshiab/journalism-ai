@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import process from "node:process";
 import ollama, { Ollama } from "ollama";
-import { initCache, readCache, writeCache } from "./helpers/cache.ts";
+import { initCache, readAndProcessCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
 /** The detailed response shape returned by {@link askOllama}. */
-type OllamaDetailedResponse = {
-  response: unknown;
+export type OllamaDetailedResponse<TResponse = unknown> = {
+  response: TResponse;
   fromCache: boolean;
   prompt: string;
   systemPrompt: string | null;
@@ -21,6 +21,21 @@ type OllamaDetailedResponse = {
   durationMs: number;
   model: string;
   thoughts: string | null;
+};
+
+/** Configuration accepted by {@link askOllama}. */
+export type AskOllamaOptions<TResponse = unknown> = {
+  systemPrompt?: string;
+  model?: string;
+  ollama?: unknown;
+  files?: { path: string; type: "image" | "text" }[];
+  schemaJson?: unknown;
+  cache?: boolean;
+  contextWindow?: number;
+  thinkingLevel?: boolean | "low" | "medium" | "high";
+  temperature?: number;
+  ollamaParameters?: unknown;
+  processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
 };
 
 /**
@@ -101,55 +116,14 @@ type OllamaDetailedResponse = {
  * @param options.thinkingLevel - Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
+ * @param options.processResponse - Transform or validate the response before it is returned. If it rejects a cached response, that cache entry is removed so a retry can generate a fresh response.
  *
  * @category AI
  */
-export default async function askOllama(
+export default async function askOllama<TResponse = unknown>(
   prompt: string,
-  options: {
-    systemPrompt?: string;
-    model?: string;
-    ollama?: unknown;
-    files?: { path: string; type: "image" | "text" }[];
-    schemaJson?: unknown;
-    cache?: boolean;
-    contextWindow?: number;
-    thinkingLevel?: boolean | "low" | "medium" | "high";
-    temperature?: number;
-    ollamaParameters?: unknown;
-  } = {},
-): Promise<{
-  /** The model's response, parsed as a JSON value when `schemaJson` was provided, otherwise a plain string. */
-  response: unknown;
-  /** `true` when the result was served from the local file cache. */
-  fromCache: boolean;
-  /** The primary text prompt (unchanged; text files are sent as separate user messages, images as attachments). */
-  prompt: string;
-  /** The system prompt sent to the model, or `null` when none was provided. */
-  systemPrompt: string | null;
-  /** The thinking level sent to the model, or `null` when none was provided. */
-  thinkingLevel: boolean | "low" | "medium" | "high" | null;
-  /** The context window sent to the model, or `null` when none was provided. */
-  contextWindow: number | null;
-  /** Sampling temperature sent to the model. */
-  temperature: number;
-  /** Files passed to the model alongside the prompt. */
-  files: { path: string; type: "image" | "text" }[];
-  /** Number of tokens in the prompt. */
-  promptTokenCount: number;
-  /** Number of tokens in the model's response. */
-  outputTokenCount: number;
-  /** Total tokens (prompt + output). */
-  totalTokens: number;
-  /** Tokens processed per second. */
-  tokensPerSecond: number;
-  /** Wall-clock time of the API call in milliseconds. */
-  durationMs: number;
-  /** The model name used for this call. */
-  model: string;
-  /** The model's internal reasoning text (only populated when thinking is enabled). */
-  thoughts: string | null;
-}> {
+  options: AskOllamaOptions<TResponse> = {},
+): Promise<OllamaDetailedResponse<TResponse>> {
   const start = Date.now();
 
   const detailedData: OllamaDetailedResponse = {
@@ -228,9 +202,12 @@ export default async function askOllama(
   // Cache check
   const cacheFiles = options.cache ? initCache(params) : null;
   if (cacheFiles) {
-    const hit = readCache(cacheFiles.cacheFile);
+    const hit = await readAndProcessCache<
+      OllamaDetailedResponse,
+      TResponse
+    >(cacheFiles.cacheFile, options.processResponse);
     if (hit !== null) {
-      return { ...(hit as OllamaDetailedResponse), fromCache: true };
+      return { ...hit, fromCache: true };
     }
   }
 
@@ -273,9 +250,13 @@ export default async function askOllama(
   detailedData.durationMs = durationMs;
   detailedData.thoughts = thoughts;
 
+  const processedResponse = options.processResponse
+    ? await options.processResponse(detailedData.response)
+    : detailedData.response as TResponse;
+
   if (cacheFiles) {
     writeCache(cacheFiles.cacheFile, detailedData);
   }
 
-  return detailedData;
+  return { ...detailedData, response: processedResponse };
 }

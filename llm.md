@@ -324,39 +324,10 @@ Temperature defaults to 0 for deterministic responses.
 ### Signature
 
 ```typescript
-async function askOllama(
+async function askOllama<TResponse>(
   prompt: string,
-  options?: {
-    systemPrompt?: string;
-    model?: string;
-    ollama?: unknown;
-    files?: { path: string; type: "image" | "text" }[];
-    schemaJson?: unknown;
-    cache?: boolean;
-    contextWindow?: number;
-    thinkingLevel?: boolean | "low" | "medium" | "high";
-    temperature?: number;
-    ollamaParameters?: unknown;
-  },
-): Promise<
-  {
-    response: unknown;
-    fromCache: boolean;
-    prompt: string;
-    systemPrompt: string | null;
-    thinkingLevel: boolean | "low" | "medium" | "high" | null;
-    contextWindow: number | null;
-    temperature: number;
-    files: { path: string; type: "image" | "text" }[];
-    promptTokenCount: number;
-    outputTokenCount: number;
-    totalTokens: number;
-    tokensPerSecond: number;
-    durationMs: number;
-    model: string;
-    thoughts: string | null;
-  }
->;
+  options?: AskOllamaOptions<TResponse>,
+): Promise<OllamaDetailedResponse<TResponse>>;
 ```
 
 ### Parameters
@@ -376,6 +347,9 @@ async function askOllama(
   only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
 - **`options.temperature`**: Sampling temperature (default 0).
 - **`options.ollamaParameters`**: Extra params merged into `client.chat`.
+- **`options.processResponse`**: Transform or validate the response before it is
+  returned. If it rejects a cached response, that cache entry is removed so a
+  retry can generate a fresh response.
 
 ### Examples
 
