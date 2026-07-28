@@ -413,17 +413,15 @@ This function supports both Google's Gemini AI models and local models running
 with Ollama. It provides options for authentication, model selection, and
 caching to optimize performance and cost.
 
-**Authentication**: Credentials, model information, and provider selection can
-be provided via environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`,
-`AI_EMBEDDINGS_MODEL`, `AI_EMBEDDINGS_PROVIDER`) or directly through the
-`options` object. Options take precedence over environment variables.
+**Authentication**: With no explicit provider, credentials, model information,
+and provider selection come from environment variables (`AI_KEY`, `AI_PROJECT`,
+`AI_LOCATION`, `AI_EMBEDDINGS_MODEL`, `AI_EMBEDDINGS_PROVIDER`). Providerless
+options intentionally contain only fields shared by every provider.
 
-**Local Models**: To use a local model with Ollama, set
-`AI_EMBEDDINGS_PROVIDER=ollama` (or the legacy `OLLAMA=true`) and ensure Ollama
-is running on your machine. You will also need to specify the model name using
-the `AI_EMBEDDINGS_MODEL` environment variable or the `model` option. If you
-want your Ollama instance to be used, you can pass an instance of the `Ollama`
-class as the `ollama` option.
+**Local Models**: To use a local model with Ollama, pass `provider: "ollama"`,
+or set `AI_EMBEDDINGS_PROVIDER=ollama` (the legacy `OLLAMA` environment variable
+is also supported), and ensure Ollama is running. A custom `Ollama` client can
+be passed in the provider-specific `ollama` option.
 
 **Caching**: To save resources and time, you can enable caching by setting
 `cache` to `true`. Responses will be stored in a local `.journalism-cache`
@@ -436,18 +434,7 @@ your `.gitignore` file.
 ```typescript
 async function getEmbedding(
   text: string,
-  options?: {
-    provider?: EmbeddingProvider;
-    model?: string;
-    apiKey?: string;
-    vertex?: boolean;
-    project?: string;
-    location?: string;
-    cache?: boolean;
-    ollama?: boolean | any;
-    verbose?: boolean;
-    contextWindow?: number;
-  },
+  options?: GetEmbeddingOptions,
 ): Promise<number[]>;
 ```
 
@@ -455,25 +442,25 @@ async function getEmbedding(
 
 - **`text`**: The input text string for which to generate the embedding.
 - **`options`**: Configuration options for the embedding generation.
-- **`options.provider`**: The embedding provider. Defaults to
-  `AI_EMBEDDINGS_PROVIDER`, then falls back to Ollama when `OLLAMA` is set and
-  Gemini otherwise.
+- **`options.provider`**: Explicitly selects Gemini/Vertex or Ollama. When
+  omitted, `AI_EMBEDDINGS_PROVIDER` is used, then the legacy `OLLAMA` fallback,
+  then Gemini.
 - **`options.model`**: The specific embedding model to use (e.g.,
   'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment
   variable.
-- **`options.apiKey`**: Your API key for authentication with Google Gemini.
-  Defaults to the `AI_KEY` environment variable.
-- **`options.vertex`**: If `true`, uses Vertex AI for authentication. Defaults
-  to `false`.
+- **`options.apiKey`**: Your Gemini API or Vertex Express Mode API key. Defaults
+  to the `AI_KEY` environment variable.
+- **`options.vertex`**: If `true`, explicitly selects the Vertex AI backend for
+  the Google provider.
 - **`options.project`**: Your Google Cloud project ID for Vertex AI. Defaults to
   the `AI_PROJECT` environment variable.
 - **`options.location`**: The Google Cloud location for your Vertex AI project.
   Defaults to the `AI_LOCATION` environment variable.
 - **`options.cache`**: If `true`, enables caching of the embedding response.
   Defaults to `false`.
-- **`options.ollama`**: If `true`, uses Ollama for local embedding generation.
-  Defaults to the `OLLAMA` environment variable. If you want your Ollama
-  instance to be used, you can pass it here too.
+- **`options.ollama`**: A custom Ollama client. Boolean selection remains
+  supported at runtime for compatibility but is deprecated; use
+  `provider: "ollama"` instead.
 - **`options.verbose`**: If `true`, logs additional information such as
   execution time and the truncated input text. Defaults to `false`.
 - **`options.contextWindow`**: An option to specify the context window size for
@@ -482,13 +469,14 @@ async function getEmbedding(
 
 ### Returns
 
-A promise that resolves to an an array of numbers representing the generated
+A promise that resolves to an array of numbers representing the generated
 embedding.
 
 ### Examples
 
 ```ts
-// Basic usage: Generate an embedding for a simple text.
+// Environment-selected usage. Configure AI_EMBEDDINGS_PROVIDER,
+// AI_EMBEDDINGS_MODEL, and the matching credentials first.
 const embedding = await getEmbedding(
   "The quick brown fox jumps over the lazy dog.",
 );
@@ -509,11 +497,32 @@ console.log(cachedEmbedding);
 const customEmbedding = await getEmbedding(
   "Machine learning is a subset of AI.",
   {
+    provider: "gemini",
     model: "another-embedding-model",
     apiKey: "your_custom_api_key",
   },
 );
 console.log(customEmbedding);
+```
+
+```ts
+// Explicit Vertex AI usage.
+const vertexEmbedding = await getEmbedding("Local reporting matters.", {
+  provider: "gemini",
+  vertex: true,
+  model: "text-embedding-004",
+  project: "your-project",
+  location: "northamerica-northeast1",
+});
+```
+
+```ts
+// Explicit Ollama usage.
+const ollamaEmbedding = await getEmbedding("Local reporting matters.", {
+  provider: "ollama",
+  model: "nomic-embed-text",
+  contextWindow: 8192,
+});
 ```
 
 ```ts
@@ -523,4 +532,38 @@ const verboseEmbedding = await getEmbedding(
   { verbose: true },
 );
 console.log(verboseEmbedding);
+```
+
+## getEmbeddingIdentity
+
+Returns the canonical, non-secret identity for an embedding request. Downstream
+persisted data can compare this value to decide whether vectors are compatible
+with the current request.
+
+### Signature
+
+```typescript
+function getEmbeddingIdentity(
+  options?: GetEmbeddingOptions,
+  environment?: EmbeddingEnvironment,
+): EmbeddingIdentity;
+```
+
+### Parameters
+
+- **`options`**: Provider-aware embedding options.
+- **`environment`**: Environment used to resolve omitted values.
+
+### Returns
+
+The canonical identity used by embedding caches.
+
+### Examples
+
+```ts
+const identity = getEmbeddingIdentity({
+  provider: "ollama",
+  model: "nomic-embed-text",
+  contextWindow: 8192,
+});
 ```

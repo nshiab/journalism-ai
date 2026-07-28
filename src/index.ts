@@ -23,8 +23,15 @@ import askGemini from "./ai/askGemini.ts";
 import askGeminiPool from "./ai/askGeminiPool.ts";
 import askOllama from "./ai/askOllama.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
+import { getEmbeddingIdentity } from "./ai/embeddingOptions.ts";
 
-export { askGemini, askGeminiPool, askOllama, getEmbedding };
+export {
+  askGemini,
+  askGeminiPool,
+  askOllama,
+  getEmbedding,
+  getEmbeddingIdentity,
+};
 export type {
   AskGeminiOptions,
   GeminiDetailedResponse,
@@ -39,4 +46,20 @@ export type {
   AskOllamaOptions,
   OllamaDetailedResponse,
 } from "./ai/askOllama.ts";
-export type { EmbeddingProvider } from "./ai/helpers/resolveEmbeddingProvider.ts";
+export type {
+  EmbeddingBackend,
+  EmbeddingCommonOptions,
+  EmbeddingEnvironment,
+  EmbeddingIdentity,
+  EmbeddingIdentityBase,
+  EmbeddingProvider,
+  EnvironmentEmbeddingOptions,
+  GeminiEmbeddingIdentity,
+  GeminiEmbeddingOptions,
+  GetEmbeddingOptions,
+  OllamaEmbeddingClient,
+  OllamaEmbeddingIdentity,
+  OllamaEmbeddingOptions,
+  VertexEmbeddingIdentity,
+  VertexEmbeddingOptions,
+} from "./ai/embeddingOptions.ts";

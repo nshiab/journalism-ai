@@ -1,6 +1,10 @@
 import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
-import getEmbedding from "../../src/ai/getEmbedding.ts";
+import {
+  type GeminiEmbeddingOptions,
+  getEmbedding,
+  type VertexEmbeddingOptions,
+} from "../../src/index.ts";
 import { Ollama } from "ollama";
 
 const aiKey = Deno.env.get("AI_KEY");
@@ -9,26 +13,30 @@ const aiLocation = Deno.env.get("AI_LOCATION");
 const embeddingModel = Deno.env.get("AI_EMBEDDINGS_MODEL");
 const embeddingsProvider = Deno.env.get("AI_EMBEDDINGS_PROVIDER");
 const legacyOllama = Deno.env.get("OLLAMA");
-const hasGeminiCredentials = Boolean(aiKey) ||
-  (Boolean(aiProject) && Boolean(aiLocation));
+const hasGeminiApiCredentials = Boolean(aiKey);
+const hasVertexCredentials = Boolean(aiProject) && Boolean(aiLocation);
+const hasGoogleCredentials = hasGeminiApiCredentials || hasVertexCredentials;
 const hasEmbeddingModel = Boolean(embeddingModel);
 const hasOllama = embeddingsProvider === "ollama" || Boolean(legacyOllama);
 const environmentProvider = embeddingsProvider ??
   (legacyOllama ? "ollama" : "gemini");
 
-if (hasEmbeddingModel && hasGeminiCredentials) {
-  Deno.test("should create an embedding", async () => {
+function registerGoogleIntegrationTests(
+  backend: string,
+  googleOptions: GeminiEmbeddingOptions | VertexEmbeddingOptions,
+): void {
+  Deno.test(`should create an embedding (${backend})`, async () => {
     const result = await getEmbedding("What is the capital of France?", {
-      provider: "gemini",
+      ...googleOptions,
     });
     console.log(result);
 
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should create an embedding with verbose option", async () => {
+  Deno.test(`should create an embedding with verbose option (${backend})`, async () => {
     const result = await getEmbedding("What is the capital of France?", {
-      provider: "gemini",
+      ...googleOptions,
       verbose: true,
     });
     console.log(result);
@@ -36,20 +44,9 @@ if (hasEmbeddingModel && hasGeminiCredentials) {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-  Deno.test("should create an embedding with verbose option and cache", async () => {
+  Deno.test(`should create an embedding with verbose option and cache (${backend})`, async () => {
     const result = await getEmbedding("What is the capital of France?", {
-      provider: "gemini",
-      verbose: true,
-      cache: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  Deno.test("should retrieve an embedding from cache", async () => {
-    const result = await getEmbedding("What is the capital of France?", {
-      provider: "gemini",
+      ...googleOptions,
       verbose: true,
       cache: true,
     });
@@ -58,9 +55,31 @@ if (hasEmbeddingModel && hasGeminiCredentials) {
     // Just making sure it doesn't crash for now.
     assertEquals(true, true);
   });
-} else {
+  Deno.test(`should retrieve an embedding from cache (${backend})`, async () => {
+    const result = await getEmbedding("What is the capital of France?", {
+      ...googleOptions,
+      verbose: true,
+      cache: true,
+    });
+    console.log(result);
+
+    // Just making sure it doesn't crash for now.
+    assertEquals(true, true);
+  });
+}
+
+if (hasEmbeddingModel && hasGeminiApiCredentials) {
+  registerGoogleIntegrationTests("Gemini API", { provider: "gemini" });
+}
+if (hasEmbeddingModel && hasVertexCredentials) {
+  registerGoogleIntegrationTests("Vertex AI", {
+    provider: "gemini",
+    vertex: true,
+  });
+}
+if (!hasEmbeddingModel || !hasGoogleCredentials) {
   console.log(
-    "No Gemini credentials or AI_EMBEDDINGS_MODEL in process.env",
+    "No Gemini/Vertex credentials or AI_EMBEDDINGS_MODEL in process.env",
   );
 }
 
@@ -145,7 +164,7 @@ if (hasEmbeddingModel && hasOllama) {
 }
 
 const canUseEnvironmentProvider = hasEmbeddingModel &&
-  (environmentProvider === "ollama" ? hasOllama : hasGeminiCredentials);
+  (environmentProvider === "ollama" ? hasOllama : hasGoogleCredentials);
 if (canUseEnvironmentProvider) {
   Deno.test("should select the embedding provider from environment variables", async () => {
     const result = await getEmbedding("What is the capital of France?");
