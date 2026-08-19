@@ -9,6 +9,7 @@ import {
   ThinkingLevel,
 } from "@google/genai";
 import { initCache, readAndProcessCache, writeCache } from "./helpers/cache.ts";
+import estimateGeminiCost from "./helpers/estimateGeminiCost.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
 /** A file entry passed to {@link askGemini} via the `files` option. */
@@ -364,7 +365,7 @@ export default async function askGemini<TResponse = unknown>(
   const promptTokenCount = finalUsageMetadata?.promptTokenCount ?? 0;
   const outputTokenCount = finalUsageMetadata?.candidatesTokenCount ?? 0;
   const thoughtsTokenCount = finalUsageMetadata?.thoughtsTokenCount ?? 0;
-  const totalTokens = promptTokenCount + outputTokenCount + thoughtsTokenCount;
+  const totalTokens = finalUsageMetadata?.totalTokenCount ?? 0;
   const tokensPerSecond = totalTokens / (durationMs / 1000);
 
   detailedData.promptTokenCount = promptTokenCount;
@@ -377,58 +378,13 @@ export default async function askGemini<TResponse = unknown>(
 
   if (finalUsageMetadata) {
     const hasAudio = options.files?.some((f) => f.type === "audio") ?? false;
-
-    const pricing = [
-      { model: "gemini-3.5-flash", input: 1.50, output: 9.00 },
-      {
-        model: "gemini-3.1-pro",
-        tiers: [
-          { threshold: 200_000, input: 2.00, output: 12.00 },
-          { threshold: Infinity, input: 4.00, output: 18.00 },
-        ],
-      },
-      {
-        model: "gemini-3.1-flash",
-        input: hasAudio ? 1.00 : 0.50,
-        output: 3.00,
-      },
-      {
-        model: "gemini-3.1-flash-lite",
-        input: hasAudio ? 0.50 : 0.25,
-        output: 1.50,
-      },
-      {
-        model: "gemini-3-pro",
-        tiers: [
-          { threshold: 200_000, input: 2.00, output: 12.00 },
-          { threshold: Infinity, input: 4.00, output: 18.00 },
-        ],
-      },
-      { model: "gemini-3-flash", input: hasAudio ? 1.00 : 0.50, output: 3.00 },
-    ];
-
-    const modelPricing = pricing.find((p) =>
-      p.model === model.replace("-preview", "")
+    detailedData.estimatedCost = estimateGeminiCost(
+      model,
+      promptTokenCount,
+      outputTokenCount,
+      thoughtsTokenCount,
+      hasAudio,
     );
-
-    if (modelPricing) {
-      let inputRate: number;
-      let outputRate: number;
-
-      if ("tiers" in modelPricing && modelPricing.tiers) {
-        const tiers = modelPricing.tiers;
-        const tier = tiers.find((t) => promptTokenCount <= t.threshold) ??
-          tiers[tiers.length - 1];
-        inputRate = tier.input;
-        outputRate = tier.output;
-      } else {
-        inputRate = modelPricing.input;
-        outputRate = modelPricing.output;
-      }
-
-      detailedData.estimatedCost = (promptTokenCount / 1_000_000) * inputRate +
-        (outputTokenCount / 1_000_000) * outputRate;
-    }
   }
 
   const processedResponse = options.processResponse
