@@ -69,7 +69,8 @@ export type AskGeminiOptions<TResponse = unknown> = {
  * **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
  * (Vertex AI) environment variables, or pass credentials directly via options.
  *
- * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+ * **Caching**: responses are persisted in `.journalism-cache` by default. Set
+ * `cache: false` to disable caching.
  *
  * **File handling**: pass files via `files: [{ path, type }]`. Local paths and
  * `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
@@ -156,7 +157,7 @@ export type AskGeminiOptions<TResponse = unknown> = {
  * @param options.webSearch - Enable web search grounding (extra cost).
  * @param options.files - Files to send alongside the prompt, in order. Each entry has a `path` (local path or `gs://` URL) and a `type` (`"image"`, `"video"`, `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content parts after the prompt.
  * @param options.schemaJson - Zod JSON schema for structured output.
- * @param options.cache - Cache the response in `.journalism-cache`.
+ * @param options.cache - Cache the response in `.journalism-cache`. Defaults to `true`.
  * @param options.processResponse - Transform or validate the response before it is returned. If it rejects a cached response, that cache entry is removed so a retry can generate a fresh response.
  * @param options.thinkingBudget - Reasoning token budget. Use `0` to disable thinking, `-1` for a dynamic budget, or a positive number for a fixed budget. Ignored when `thinkingLevel` is provided.
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
@@ -322,7 +323,7 @@ export default async function askGemini<TResponse = unknown>(
   };
 
   // Cache check
-  const cacheFiles = options.cache ? initCache(params) : null;
+  const cacheFiles = (options.cache ?? true) ? initCache(params) : null;
   if (cacheFiles) {
     const hit = await readAndProcessCache<
       GeminiDetailedResponse<unknown>,

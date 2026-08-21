@@ -26,7 +26,8 @@ answering questions to analyzing multimedia content.
 **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
 (Vertex AI) environment variables, or pass credentials directly via options.
 
-**Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+**Caching**: responses are persisted in `.journalism-cache` by default. Set
+`cache: false` to disable caching.
 
 **File handling**: pass files via `files: [{ path, type }]`. Local paths and
 `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
@@ -61,7 +62,8 @@ async function askGemini<TResponse>(
   `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content
   parts after the prompt.
 - **`options.schemaJson`**: Zod JSON schema for structured output.
-- **`options.cache`**: Cache the response in `.journalism-cache`.
+- **`options.cache`**: Cache the response in `.journalism-cache`. Defaults to
+  `true`.
 - **`options.processResponse`**: Transform or validate the response before it is
   returned. If it rejects a cached response, that cache entry is removed so a
   retry can generate a fresh response.
@@ -317,7 +319,8 @@ host.
 **File handling**: pass local files via `files: [{ path, type }]`. Only
 `"image"` and `"text"` types are supported for now.
 
-**Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+**Caching**: responses are persisted in `.journalism-cache` by default. Set
+`cache: false` to disable caching.
 
 Temperature defaults to 0 for deterministic responses.
 
@@ -341,7 +344,8 @@ async function askOllama<TResponse>(
   Text files are sent as separate user messages after the prompt; images are
   sent as attachments to the prompt message.
 - **`options.schemaJson`**: JSON schema for structured output.
-- **`options.cache`**: Cache the response in `.journalism-cache`.
+- **`options.cache`**: Cache the response in `.journalism-cache`. Defaults to
+  `true`.
 - **`options.contextWindow`**: Override the model's context window size.
 - **`options.thinkingLevel`**: Enables reasoning. Pass `true` for models that
   only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
@@ -423,11 +427,10 @@ or set `AI_EMBEDDINGS_PROVIDER=ollama` (the legacy `OLLAMA` environment variable
 is also supported), and ensure Ollama is running. A custom `Ollama` client can
 be passed in the provider-specific `ollama` option.
 
-**Caching**: To save resources and time, you can enable caching by setting
-`cache` to `true`. Responses will be stored in a local `.journalism-cache`
+**Caching**: Responses are cached by default in a local `.journalism-cache`
 directory. If the same request is made again, the cached response will be
-returned, avoiding redundant API calls. Remember to add `.journalism-cache` to
-your `.gitignore` file.
+returned, avoiding redundant API calls. Set `cache` to `false` to disable
+caching. Remember to add `.journalism-cache` to your `.gitignore` file.
 
 ### Signature
 
@@ -457,7 +460,7 @@ async function getEmbedding(
 - **`options.location`**: The Google Cloud location for your Vertex AI project.
   Defaults to the `AI_LOCATION` environment variable.
 - **`options.cache`**: If `true`, enables caching of the embedding response.
-  Defaults to `false`.
+  Defaults to `true`.
 - **`options.ollama`**: A custom Ollama client. Boolean selection remains
   supported at runtime for compatibility but is deprecated; use
   `provider: "ollama"` instead.
@@ -484,10 +487,9 @@ console.log(embedding); // [0.012, -0.034, ..., 0.056] (example output)
 ```
 
 ```ts
-// Generate an embedding with caching enabled.
+// Embeddings are cached by default.
 const cachedEmbedding = await getEmbedding(
   "Artificial intelligence is transforming industries.",
-  { cache: true },
 );
 console.log(cachedEmbedding);
 ```

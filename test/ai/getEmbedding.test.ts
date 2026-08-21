@@ -5,7 +5,57 @@ import {
   getEmbedding,
   type VertexEmbeddingOptions,
 } from "../../src/index.ts";
+import { existsSync, rmSync } from "node:fs";
 import { Ollama } from "ollama";
+
+function inTemporaryDirectory(
+  run: (temporaryDirectory: string) => Promise<void>,
+): Promise<void> {
+  const originalDirectory = Deno.cwd();
+  const temporaryDirectory = Deno.makeTempDirSync();
+  Deno.chdir(temporaryDirectory);
+
+  return run(temporaryDirectory).finally(() => {
+    Deno.chdir(originalDirectory);
+    rmSync(temporaryDirectory, { recursive: true });
+  });
+}
+
+Deno.test("caches embeddings by default and supports opting out", async () => {
+  await inTemporaryDirectory(async (temporaryDirectory) => {
+    let requests = 0;
+    const client = {
+      embeddingEndpoint: "http://test-ollama.example:11434",
+      embed: () => {
+        requests++;
+        return Promise.resolve({ embeddings: [[requests]] });
+      },
+    };
+    const options = {
+      provider: "ollama" as const,
+      model: "test-model",
+      ollama: client,
+    };
+
+    const first = await getEmbedding("default cache", options);
+    const second = await getEmbedding("default cache", options);
+    const uncachedFirst = await getEmbedding("disabled cache", {
+      ...options,
+      cache: false,
+    });
+    const uncachedSecond = await getEmbedding("disabled cache", {
+      ...options,
+      cache: false,
+    });
+
+    assertEquals(first, [1]);
+    assertEquals(second, [1]);
+    assertEquals(uncachedFirst, [2]);
+    assertEquals(uncachedSecond, [3]);
+    assertEquals(requests, 3);
+    assertEquals(existsSync(`${temporaryDirectory}/.journalism-cache`), true);
+  });
+});
 
 const aiKey = Deno.env.get("AI_KEY");
 const aiProject = Deno.env.get("AI_PROJECT");
