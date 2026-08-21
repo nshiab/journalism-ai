@@ -46,6 +46,10 @@ type AskGeminiExecutor<TResponse> = (
  *
  * Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
  *
+ * **Caching**: each request uses {@link askGemini}'s default caching behavior, so
+ * responses are persisted in `.journalism-cache` by default. Set
+ * `options.cache: false` on an individual request to disable caching for it.
+ *
  * @example
  * ```ts
  * // Basic usage: Process a batch of prompts with a pool of 5 concurrent workers.
@@ -144,7 +148,7 @@ type AskGeminiExecutor<TResponse> = (
  *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
  *   @param requests[].prompt - The primary text input for the AI model.
  *   @param requests[].processResponse - An optional function that transforms or validates the response inside the retry loop. If it throws, the request is retried according to `poolOptions`.
- *   @param requests[].options - Options passed to {@link askGemini} for each individual request. See {@link askGemini} for the full list of available options.
+ *   @param requests[].options - Options passed to {@link askGemini} for each individual request. Caching defaults to `true`; set `cache: false` to disable it for that request. See {@link askGemini} for the full list of available options.
  * @param poolSize - The number of concurrent workers processing requests.
  * @param poolOptions - Configuration for the pool execution.
  *   @param poolOptions.logProgress - If `true`, logs progress to the console after each completed or failed request. Defaults to `false`.

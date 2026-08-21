@@ -150,6 +150,10 @@ controls how many requests run simultaneously. Results and errors are returned
 separately, sorted by their original index, making it easy to match outputs back
 to inputs.
 
+**Caching**: each request uses {@link askGemini}'s default caching behavior, so
+responses are persisted in `.journalism-cache` by default. Set
+`options.cache: false` on an individual request to disable caching for it.
+
 ### Signature
 
 ```typescript
@@ -170,7 +174,8 @@ function askGeminiPool<TResponse>(
   validates the response inside the retry loop. If it throws, the request is
   retried according to `poolOptions`.
 - **`requests[].options`**: Options passed to {@link askGemini} for each
-  individual request. See {@link askGemini} for the full list of available
+  individual request. Caching defaults to `true`; set `cache: false` to disable
+  it for that request. See {@link askGemini} for the full list of available
   options.
 - **`poolSize`**: The number of concurrent workers processing requests.
 - **`poolOptions`**: Configuration for the pool execution.
