@@ -20,7 +20,7 @@ import {
  * To use a local model with Ollama, pass `provider: "ollama"`, or set `AI_EMBEDDINGS_PROVIDER=ollama` (the legacy `OLLAMA` environment variable is also supported), and ensure Ollama is running. A custom `Ollama` client can be passed in the provider-specific `ollama` option.
  *
  * **Caching**:
- * To save resources and time, you can enable caching by setting `cache` to `true`. Responses will be stored in a local `.journalism-cache` directory. If the same request is made again, the cached response will be returned, avoiding redundant API calls. Remember to add `.journalism-cache` to your `.gitignore` file.
+ * Responses are cached by default in a local `.journalism-cache` directory. If the same request is made again, the cached response will be returned, avoiding redundant API calls. Set `cache` to `false` to disable caching. Remember to add `.journalism-cache` to your `.gitignore` file.
  *
  * @param text The input text string for which to generate the embedding.
  * @param options Configuration options for the embedding generation.
@@ -30,7 +30,7 @@ import {
  * @param options.vertex If `true`, explicitly selects the Vertex AI backend for the Google provider.
  * @param options.project Your Google Cloud project ID for Vertex AI. Defaults to the `AI_PROJECT` environment variable.
  * @param options.location The Google Cloud location for your Vertex AI project. Defaults to the `AI_LOCATION` environment variable.
- * @param options.cache If `true`, enables caching of the embedding response. Defaults to `false`.
+ * @param options.cache If `true`, enables caching of the embedding response. Defaults to `true`.
  * @param options.ollama A custom Ollama client. Boolean selection remains supported at runtime for compatibility but is deprecated; use `provider: "ollama"` instead.
  * @param options.verbose If `true`, logs additional information such as execution time and the truncated input text. Defaults to `false`.
  *   @param options.contextWindow - An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
@@ -46,8 +46,8 @@ import {
  * ```
  * @example
  * ```ts
- * // Generate an embedding with caching enabled.
- * const cachedEmbedding = await getEmbedding("Artificial intelligence is transforming industries.", { cache: true });
+ * // Embeddings are cached by default.
+ * const cachedEmbedding = await getEmbedding("Artificial intelligence is transforming industries.");
  * console.log(cachedEmbedding);
  * ```
  * @example
@@ -96,6 +96,7 @@ export default async function getEmbedding(
   const resolved = resolveEmbeddingRequest(options);
   const { identity } = resolved;
   const model = identity.model;
+  const cache = options.cache ?? true;
 
   if (options.verbose) {
     console.log(`\nText for ${model}:`);
@@ -105,7 +106,7 @@ export default async function getEmbedding(
   const cacheKeyInput = { identity, text };
 
   let cacheFileJSON;
-  if (options.cache) {
+  if (cache) {
     const cachePath = "./.journalism-cache";
     if (!existsSync(cachePath)) {
       mkdirSync(cachePath);
@@ -189,7 +190,7 @@ export default async function getEmbedding(
     );
   }
 
-  if (options.cache && cacheFileJSON) {
+  if (cache && cacheFileJSON) {
     if (returnedResponse && Array.isArray(returnedResponse)) {
       writeFileSync(cacheFileJSON, JSON.stringify(returnedResponse));
       if (options.verbose) {

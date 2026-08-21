@@ -4,6 +4,68 @@ import askGemini from "../../src/ai/askGemini.ts";
 import { existsSync, rmSync } from "node:fs";
 import * as z from "zod";
 
+function inTemporaryDirectory(run: () => Promise<void>): Promise<void> {
+  const originalDirectory = Deno.cwd();
+  const temporaryDirectory = Deno.makeTempDirSync();
+  Deno.chdir(temporaryDirectory);
+
+  return run().finally(() => {
+    Deno.chdir(originalDirectory);
+    rmSync(temporaryDirectory, { recursive: true });
+  });
+}
+
+Deno.test("caches Gemini responses by default and supports opting out", async () => {
+  await inTemporaryDirectory(async () => {
+    const originalFetch = globalThis.fetch;
+    let requests = 0;
+    globalThis.fetch = (() => {
+      requests++;
+      return Promise.resolve(Response.json({
+        candidates: [{
+          content: { parts: [{ text: `response-${requests}` }], role: "model" },
+          finishReason: "STOP",
+        }],
+        usageMetadata: {
+          promptTokenCount: 1,
+          candidatesTokenCount: 1,
+          totalTokenCount: 2,
+        },
+      }));
+    }) as typeof fetch;
+
+    try {
+      const first = await askGemini("default cache", {
+        apiKey: "test-key",
+        model: "test-model",
+      });
+      const second = await askGemini("default cache", {
+        apiKey: "test-key",
+        model: "test-model",
+      });
+      const uncachedFirst = await askGemini("disabled cache", {
+        apiKey: "test-key",
+        model: "test-model",
+        cache: false,
+      });
+      const uncachedSecond = await askGemini("disabled cache", {
+        apiKey: "test-key",
+        model: "test-model",
+        cache: false,
+      });
+
+      assertEquals(first.fromCache, false);
+      assertEquals(second.fromCache, true);
+      assertEquals(second.response, first.response);
+      assertEquals(uncachedFirst.fromCache, false);
+      assertEquals(uncachedSecond.fromCache, false);
+      assertEquals(requests, 3);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
 if (typeof aiKey === "string" && aiKey !== "") {
   if (existsSync("./.journalism-cache")) {

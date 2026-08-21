@@ -64,7 +64,8 @@ export type AskOllamaOptions<TResponse = unknown> = {
  * **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
  * and `"text"` types are supported for now.
  *
- * **Caching**: set `cache: true` to persist responses in `.journalism-cache`.
+ * **Caching**: responses are persisted in `.journalism-cache` by default. Set
+ * `cache: false` to disable caching.
  *
  * Temperature defaults to 0 for deterministic responses.
  *
@@ -125,7 +126,7 @@ export type AskOllamaOptions<TResponse = unknown> = {
  * @param options.systemPrompt - Optional system prompt.
  * @param options.files - Files to send alongside the prompt. Only `"image"` and `"text"` types are supported (local paths only; no GCS, audio, video, or PDF). Text files are sent as separate user messages after the prompt; images are sent as attachments to the prompt message.
  * @param options.schemaJson - JSON schema for structured output.
- * @param options.cache - Cache the response in `.journalism-cache`.
+ * @param options.cache - Cache the response in `.journalism-cache`. Defaults to `true`.
  * @param options.contextWindow - Override the model's context window size.
  * @param options.thinkingLevel - Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
  * @param options.temperature - Sampling temperature (default 0).
@@ -221,7 +222,7 @@ export default async function askOllama<TResponse = unknown>(
   };
 
   // Cache check
-  const cacheFiles = options.cache ? initCache(params) : null;
+  const cacheFiles = (options.cache ?? true) ? initCache(params) : null;
   if (cacheFiles) {
     const processCachedResponse = hasSchema || options.processResponse
       ? async (response: unknown): Promise<TResponse> => {

@@ -12,7 +12,7 @@ export type EmbeddingBackend = "gemini-api" | "vertex" | "ollama";
 export interface EmbeddingCommonOptions {
   /** The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`. */
   model?: string;
-  /** Whether to persist and reuse the embedding response. */
+  /** Whether to persist and reuse the embedding response. Defaults to `true`. */
   cache?: boolean;
   /** Whether to log request and timing information. */
   verbose?: boolean;

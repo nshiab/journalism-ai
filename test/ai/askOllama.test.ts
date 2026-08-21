@@ -24,6 +24,50 @@ function createFakeOllama(
   return client;
 }
 
+function inTemporaryDirectory(run: () => Promise<void>): Promise<void> {
+  const originalDirectory = Deno.cwd();
+  const temporaryDirectory = Deno.makeTempDirSync();
+  Deno.chdir(temporaryDirectory);
+
+  return run().finally(() => {
+    Deno.chdir(originalDirectory);
+    rmSync(temporaryDirectory, { recursive: true });
+  });
+}
+
+Deno.test("caches Ollama responses by default and supports opting out", async () => {
+  await inTemporaryDirectory(async () => {
+    let requests = 0;
+    const client = createFakeOllama("response", () => requests++);
+
+    const first = await askOllama("default cache", {
+      model: "test-model",
+      ollama: client,
+    });
+    const second = await askOllama("default cache", {
+      model: "test-model",
+      ollama: client,
+    });
+    const uncachedFirst = await askOllama("disabled cache", {
+      model: "test-model",
+      ollama: client,
+      cache: false,
+    });
+    const uncachedSecond = await askOllama("disabled cache", {
+      model: "test-model",
+      ollama: client,
+      cache: false,
+    });
+
+    assertEquals(first.fromCache, false);
+    assertEquals(second.fromCache, true);
+    assertEquals(second.response, first.response);
+    assertEquals(uncachedFirst.fromCache, false);
+    assertEquals(uncachedSecond.fromCache, false);
+    assertEquals(requests, 3);
+  });
+});
+
 Deno.test("grounds Ollama structured responses with the JSON schema", async () => {
   const schema = z.toJSONSchema(
     z.array(z.object({ country: z.string(), population: z.string() })),
@@ -38,6 +82,7 @@ Deno.test("grounds Ollama structured responses with the JSON schema", async () =
     model: "test-only-model",
     ollama: client,
     schemaJson: schema,
+    cache: false,
   });
 
   const messages = (request as { messages: { content: string }[] }).messages;
@@ -57,6 +102,7 @@ Deno.test("rejects Ollama responses that do not match the JSON schema", async ()
       model: "test-only-model",
       ollama: client,
       schemaJson: schema,
+      cache: false,
     })
   );
 });
