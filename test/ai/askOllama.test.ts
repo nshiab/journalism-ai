@@ -1,4 +1,3 @@
-import "@std/dotenv/load";
 import { assertEquals, assertRejects } from "jsr:@std/assert";
 import askOllama from "../../src/ai/askOllama.ts";
 import { existsSync, rmSync } from "node:fs";

@@ -1,4 +1,3 @@
-import "@std/dotenv/load";
 import { assertEquals } from "jsr:@std/assert";
 import askGeminiPool, { runAskGeminiPool } from "../../src/ai/askGeminiPool.ts";
 import type {

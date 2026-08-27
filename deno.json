@@ -8,9 +8,9 @@
     ".": "./src/index.ts"
   },
   "tasks": {
-    "all-tests": "deno fmt --check && deno lint && deno check src/index.ts && deno doc --lint src/index.ts && deno publish --allow-dirty --dry-run && TZ=America/Toronto deno test -A --fail-fast && deno task llm",
+    "all-tests": "deno fmt --check && deno lint && deno check src/index.ts && deno doc --lint src/index.ts && deno publish --allow-dirty --dry-run && TZ=America/Toronto deno test -A --env-file --fail-fast && deno task llm",
     "llm": "deno run -A jsr:@nshiab/deno-docs-to-md && deno fmt llm.md",
-    "test-coverage": "deno test -A --fail-fast --coverage=cov_profile && deno coverage cov_profile",
+    "test-coverage": "deno test -A --env-file --fail-fast --coverage=cov_profile && deno coverage cov_profile",
     "patch": "deno task all-tests && deno run -A jsr:@nshiab/bump-version patch",
     "minor": "deno task all-tests && deno run -A jsr:@nshiab/bump-version minor",
     "major": "deno task all-tests && deno run -A jsr:@nshiab/bump-version major"
@@ -28,9 +28,6 @@
   "nodeModulesDir": "auto",
   "imports": {
     "@google/genai": "npm:@google/genai@^2.0.1",
-    "@nshiab/journalism-format": "jsr:@nshiab/journalism-format@^1.1.9",
-    "@nshiab/journalism-google": "jsr:@nshiab/journalism-google@^1.0.10",
-    "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
     "ollama": "npm:ollama@^0.6.3",
     "zod": "npm:zod@^4.4.3"
   },

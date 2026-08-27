@@ -2,11 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { GoogleGenAI } from "@google/genai";
 import ollama from "ollama";
 import crypto from "node:crypto";
-import { prettyDuration } from "@nshiab/journalism-format";
 import {
   type GetEmbeddingOptions,
   resolveEmbeddingRequest,
 } from "./embeddingOptions.ts";
+import formatDuration from "./helpers/formatDuration.ts";
 
 /**
  * Generates a numerical embedding (vector representation) for a given text string. Embeddings are crucial for various natural language processing (NLP) tasks, including semantic search, text classification, clustering, and anomaly detection, as they allow text to be processed and compared mathematically.
@@ -200,7 +200,7 @@ export default async function getEmbedding(
   }
 
   if (options.verbose) {
-    console.log("Execution time:", prettyDuration(start));
+    console.log("Execution time:", formatDuration(Date.now() - start));
   }
 
   return returnedResponse;
