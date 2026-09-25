@@ -16,6 +16,21 @@ export interface EmbeddingCommonOptions {
   cache?: boolean;
   /** Whether to log request and timing information. */
   verbose?: boolean;
+  /**
+   * Awaits caller-controlled pacing immediately before an uncached provider
+   * request. Cache hits skip this hook. Throwing prevents dispatch and caching.
+   * The hook is excluded from embedding identity and cache keys.
+   *
+   * @example
+   * ```ts
+   * const options = {
+   *   beforeRequest: async () => {
+   *     await new Promise((resolve) => setTimeout(resolve, 100));
+   *   },
+   * };
+   * ```
+   */
+  beforeRequest?: () => Promise<void> | void;
 }
 
 /** Options that explicitly select the Gemini API. */

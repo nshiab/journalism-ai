@@ -474,6 +474,10 @@ async function getEmbedding(
 - **`options.contextWindow`**: An option to specify the context window size for
   Ollama models. By default, Ollama sets this depending on the model, which can
   be lower than the actual maximum context window size of the model.
+- **`options.beforeRequest`**: Awaited immediately before each uncached provider
+  dispatch, including when caching is disabled. Cache hits skip it. Throwing
+  prevents dispatch and successful caching. Caller retries invoke it again; it
+  is excluded from cache identity.
 
 ### Returns
 
@@ -539,6 +543,17 @@ const verboseEmbedding = await getEmbedding(
   { verbose: true },
 );
 console.log(verboseEmbedding);
+```
+
+```ts
+// Apply pacing only when the response is not cached.
+const embedding = await getEmbedding("Local reporting matters.", {
+  provider: "ollama",
+  model: "nomic-embed-text",
+  beforeRequest: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  },
+});
 ```
 
 ## getEmbeddingIdentity

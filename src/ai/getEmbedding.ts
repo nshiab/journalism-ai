@@ -22,21 +22,6 @@ import formatDuration from "./helpers/formatDuration.ts";
  * **Caching**:
  * Responses are cached by default in a local `.journalism-cache` directory. If the same request is made again, the cached response will be returned, avoiding redundant API calls. Set `cache` to `false` to disable caching. Remember to add `.journalism-cache` to your `.gitignore` file.
  *
- * @param text The input text string for which to generate the embedding.
- * @param options Configuration options for the embedding generation.
- * @param options.provider Explicitly selects Gemini/Vertex or Ollama. When omitted, `AI_EMBEDDINGS_PROVIDER` is used, then the legacy `OLLAMA` fallback, then Gemini.
- * @param options.model The specific embedding model to use (e.g., 'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment variable.
- * @param options.apiKey Your Gemini API or Vertex Express Mode API key. Defaults to the `AI_KEY` environment variable.
- * @param options.vertex If `true`, explicitly selects the Vertex AI backend for the Google provider.
- * @param options.project Your Google Cloud project ID for Vertex AI. Defaults to the `AI_PROJECT` environment variable.
- * @param options.location The Google Cloud location for your Vertex AI project. Defaults to the `AI_LOCATION` environment variable.
- * @param options.cache If `true`, enables caching of the embedding response. Defaults to `true`.
- * @param options.ollama A custom Ollama client. Boolean selection remains supported at runtime for compatibility but is deprecated; use `provider: "ollama"` instead.
- * @param options.verbose If `true`, logs additional information such as execution time and the truncated input text. Defaults to `false`.
- *   @param options.contextWindow - An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
- *
- * @returns A promise that resolves to an array of numbers representing the generated embedding.
- *
  * @example
  * ```ts
  * // Environment-selected usage. Configure AI_EMBEDDINGS_PROVIDER,
@@ -86,6 +71,34 @@ import formatDuration from "./helpers/formatDuration.ts";
  * const verboseEmbedding = await getEmbedding("The quick brown fox jumps over the lazy dog.", { verbose: true });
  * console.log(verboseEmbedding);
  * ```
+ * @example
+ * ```ts
+ * // Apply pacing only when the response is not cached.
+ * const embedding = await getEmbedding("Local reporting matters.", {
+ *   provider: "ollama",
+ *   model: "nomic-embed-text",
+ *   beforeRequest: async () => {
+ *     await new Promise((resolve) => setTimeout(resolve, 100));
+ *   },
+ * });
+ * ```
+ *
+ * @param text The input text string for which to generate the embedding.
+ * @param options Configuration options for the embedding generation.
+ * @param options.provider Explicitly selects Gemini/Vertex or Ollama. When omitted, `AI_EMBEDDINGS_PROVIDER` is used, then the legacy `OLLAMA` fallback, then Gemini.
+ * @param options.model The specific embedding model to use (e.g., 'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment variable.
+ * @param options.apiKey Your Gemini API or Vertex Express Mode API key. Defaults to the `AI_KEY` environment variable.
+ * @param options.vertex If `true`, explicitly selects the Vertex AI backend for the Google provider.
+ * @param options.project Your Google Cloud project ID for Vertex AI. Defaults to the `AI_PROJECT` environment variable.
+ * @param options.location The Google Cloud location for your Vertex AI project. Defaults to the `AI_LOCATION` environment variable.
+ * @param options.cache If `true`, enables caching of the embedding response. Defaults to `true`.
+ * @param options.ollama A custom Ollama client. Boolean selection remains supported at runtime for compatibility but is deprecated; use `provider: "ollama"` instead.
+ * @param options.verbose If `true`, logs additional information such as execution time and the truncated input text. Defaults to `false`.
+ * @param options.contextWindow - An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
+ * @param options.beforeRequest Awaited immediately before each uncached provider dispatch, including when caching is disabled. Cache hits skip it. Throwing prevents dispatch and successful caching. Caller retries invoke it again; it is excluded from cache identity.
+ *
+ * @returns A promise that resolves to an array of numbers representing the generated embedding.
+ *
  * @category AI
  */
 export default async function getEmbedding(
@@ -133,6 +146,7 @@ export default async function getEmbedding(
   let rawResponse: unknown;
   if (identity.backend === "ollama") {
     const client = resolved.ollama ?? ollama;
+    await options.beforeRequest?.();
     const response = await client.embed({
       model,
       input: text,
@@ -163,6 +177,7 @@ export default async function getEmbedding(
       project: resolved.project,
       location: resolved.location,
     });
+    await options.beforeRequest?.();
     const response = await client.models.embedContent({
       model,
       contents: text,
