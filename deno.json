@@ -1,6 +1,6 @@
 {
   "name": "@nshiab/journalism-ai",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Useful TypeScript functions for journalism projects. This library focuses on AI.",
   "repository": "https://github.com/nshiab/journalism-ai",
   "license": "MIT",
@@ -27,9 +27,9 @@
   },
   "nodeModulesDir": "auto",
   "imports": {
-    "@google/genai": "npm:@google/genai@^2.19.0",
-    "ollama": "npm:ollama@^0.6.3",
-    "zod": "npm:zod@^4.4.3"
+    "@google/genai": "npm:@google/genai@^2.28.0",
+    "ollama": "npm:ollama@^0.6.4",
+    "zod": "npm:zod@^4.6.5"
   },
   "compilerOptions": {
     "lib": [
