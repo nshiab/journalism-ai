@@ -40,25 +40,6 @@ agents, run:
 npx @nshiab/setup-data-project
 ```
 
-## Caching and response processing
-
-`askGemini`, `askOllama`, and `askGeminiPool` cache model responses and request
-metadata in `.journalism-cache` by default. Structured responses are parsed before
-processing. The cache saves model calls; it does not cache your callback's output.
-
-`processResponse` runs on every call, including cache hits, and can be async.
-Changing the callback reuses the original model response and applies your new
-processing without another model call. Modifying its input does not alter the
-stored response.
-
-Fresh responses are cached only after processing succeeds. If your callback
-throws or rejects on a cache hit, that entry is deleted and the error is passed
-to the caller. A subsequent attempt calls the model again; `askGeminiPool` can
-retry according to its retry settings.
-
-Set `cache: false` in the request options to disable caching, or delete
-`.journalism-cache` to clear it. Add that folder to `.gitignore`.
-
 ## Documentation
 
 - [Documentation](https://nshiab.github.io/journalism-ai/)
@@ -83,15 +64,11 @@ from answering questions to analyzing multimedia content.
 **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
 (Vertex AI) environment variables, or pass credentials directly via options.
 
-**Caching**: enabled by default in `.journalism-cache`. The cache contains
-the original model response (parsed for structured output) and request
-metadata. `processResponse` is awaited on every call, including cache hits;
-its output is never cached. Changing the callback reuses the same model
-response without another model call. Mutating the callback input does not
-change the stored response. A fresh response is saved only after processing
-succeeds. If processing rejects a cached response, that entry is removed and
-the error is thrown; a subsequent attempt can request a fresh response.
-Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
+**Caching**: model calls can be slow and costly, so original responses are
+cached in `.journalism-cache` by default. `processResponse` reruns on every
+call, including cache hits, and its output is never cached. Keep it lightweight
+and optimize heavier processing, especially for large workloads.
+Set `cache: false` to disable caching.
 
 **File handling**: pass files via `files: [{ path, type }]`. Local paths and
 `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
@@ -289,15 +266,11 @@ Processes multiple Gemini requests concurrently using a pool of workers. This fu
 
 Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
 
-**Caching**: each request uses [askGemini](#askgemini)'s default caching behavior.
-The cache in `.journalism-cache` contains original model responses and request
-metadata. Each request's `processResponse` runs on
-every attempt, including cache hits; its output is never cached. Changing it
-reuses the model response without another model call, and mutations to its
-input do not change the stored response. Fresh responses are saved only after
-processing succeeds. Rejected cached responses are removed, allowing retries
-to call the model again. Set `options.cache: false` on an individual request
-to disable caching for it, or remove `.journalism-cache` to clear the cache.
+**Caching**: model calls can be slow and costly, so original responses are
+cached in `.journalism-cache` by default. `processResponse` reruns on every
+call, including cache hits, and its output is never cached. Keep it lightweight
+and optimize heavier processing, especially for large workloads.
+Set `options.cache: false` on each request to disable its cache.
 
 #### Type Parameters
 
@@ -461,15 +434,11 @@ non-default host.
 **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
 and `"text"` types are supported for now.
 
-**Caching**: enabled by default in `.journalism-cache`. The cache contains
-the original model response (parsed for structured output) and request
-metadata. `processResponse` is awaited on every call, including cache hits;
-its output is never cached. Changing the callback reuses the same model
-response without another model call. Mutating the callback input does not
-change the stored response. A fresh response is saved only after processing
-succeeds. If processing rejects a cached response, that entry is removed and
-the error is thrown; a subsequent attempt can request a fresh response.
-Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
+**Caching**: model calls can be slow and costly, so original responses are
+cached in `.journalism-cache` by default. `processResponse` reruns on every
+call, including cache hits, and its output is never cached. Keep it lightweight
+and optimize heavier processing, especially for large workloads.
+Set `cache: false` to disable caching.
 
 Temperature defaults to 0 for deterministic responses.
 
