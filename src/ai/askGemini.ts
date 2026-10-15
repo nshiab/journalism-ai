@@ -79,15 +79,11 @@ export type AskGeminiOptions<TResponse = unknown> = {
  * **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
  * (Vertex AI) environment variables, or pass credentials directly via options.
  *
- * **Caching**: enabled by default in `.journalism-cache`. The cache contains
- * the original model response (parsed for structured output) and request
- * metadata. `processResponse` is awaited on every call, including cache hits;
- * its output is never cached. Changing the callback reuses the same model
- * response without another model call. Mutating the callback input does not
- * change the stored response. A fresh response is saved only after processing
- * succeeds. If processing rejects a cached response, that entry is removed and
- * the error is thrown; a subsequent attempt can request a fresh response.
- * Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
+ * **Caching**: model calls can be slow and costly, so original responses are
+ * cached in `.journalism-cache` by default. `processResponse` reruns on every
+ * call, including cache hits, and its output is never cached. Keep it lightweight
+ * and optimize heavier processing, especially for large workloads.
+ * Set `cache: false` to disable caching.
  *
  * **File handling**: pass files via `files: [{ path, type }]`. Local paths and
  * `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
