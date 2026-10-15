@@ -1,4 +1,4 @@
-**Journalism AI v2.0.8**
+**Journalism AI v3.0.0**
 
 ***
 
