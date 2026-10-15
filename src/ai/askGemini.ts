@@ -1,7 +1,9 @@
+import { geminiCachedResponse } from "./helpers/cachedResponse.ts";
 import { readFileSync } from "node:fs";
 import process from "node:process";
 import {
   type ContentListUnion,
+  type GenerateContentParameters,
   GoogleGenAI,
   HarmBlockThreshold,
   HarmCategory,
@@ -12,7 +14,9 @@ import { initCache, readAndProcessCache, writeCache } from "./helpers/cache.ts";
 import estimateGeminiCost from "./helpers/estimateGeminiCost.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
-/** A file entry passed to {@link askGemini} via the `files` option. */
+/** A file entry passed to {@link askGemini} via the `files` option.
+ * @inline
+ */
 export type GeminiFile = {
   /** Local path or `gs://` GCS URL to the file. */
   path: string;
@@ -20,7 +24,9 @@ export type GeminiFile = {
   type: "image" | "video" | "audio" | "pdf" | "text";
 };
 
-/** The detailed response shape returned by {@link askGemini}. */
+/** The detailed response shape returned by {@link askGemini}.
+ * @inline
+ */
 export type GeminiDetailedResponse<TResponse = unknown> = {
   response: TResponse;
   fromCache: boolean;
@@ -33,7 +39,8 @@ export type GeminiDetailedResponse<TResponse = unknown> = {
   promptTokenCount: number;
   outputTokenCount: number;
   totalTokens: number;
-  tokensPerSecond: number;
+  /** Tokens per second; cached zero-duration rates are null after JSON serialization. */
+  tokensPerSecond: number | null;
   estimatedCost: number | null;
   durationMs: number;
   model: string;
@@ -41,7 +48,9 @@ export type GeminiDetailedResponse<TResponse = unknown> = {
   thoughtsTokenCount: number;
 };
 
-/** Configuration accepted by {@link askGemini}. */
+/** Configuration accepted by {@link askGemini}.
+ * @inline
+ */
 export type AskGeminiOptions<TResponse = unknown> = {
   systemPrompt?: string;
   model?: string;
@@ -53,13 +62,13 @@ export type AskGeminiOptions<TResponse = unknown> = {
   files?: GeminiFile[];
   schemaJson?: unknown;
   cache?: boolean;
+  /** Transform or validate the response before returning it; rejected cached responses are removed. */
   processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
   thinkingBudget?: number;
   thinkingLevel?: "minimal" | "low" | "medium" | "high";
   temperature?: number;
   safetyEnabled?: boolean;
-  // deno-lint-ignore no-explicit-any
-  geminiParameters?: any;
+  geminiParameters?: Partial<GenerateContentParameters>;
 };
 
 /**
@@ -158,7 +167,6 @@ export type AskGeminiOptions<TResponse = unknown> = {
  * @param options.files - Files to send alongside the prompt, in order. Each entry has a `path` (local path or `gs://` URL) and a `type` (`"image"`, `"video"`, `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content parts after the prompt.
  * @param options.schemaJson - Zod JSON schema for structured output.
  * @param options.cache - Cache the response in `.journalism-cache`. Defaults to `true`.
- * @param options.processResponse - Transform or validate the response before it is returned. If it rejects a cached response, that cache entry is removed so a retry can generate a fresh response.
  * @param options.thinkingBudget - Reasoning token budget. Use `0` to disable thinking, `-1` for a dynamic budget, or a positive number for a fixed budget. Ignored when `thinkingLevel` is provided.
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
  * @param options.temperature - Sampling temperature sent to Gemini.
@@ -167,13 +175,20 @@ export type AskGeminiOptions<TResponse = unknown> = {
  *
  * @category AI
  */
-export default async function askGemini<TResponse = unknown>(
+export default function askGemini<TResponse = unknown>(
   prompt: string,
-  options: AskGeminiOptions<TResponse> = {},
-): Promise<GeminiDetailedResponse<TResponse>> {
+  options?: AskGeminiOptions<TResponse>,
+): Promise<GeminiDetailedResponse<TResponse>>;
+export default async function askGemini(
+  prompt: string,
+  options: AskGeminiOptions = {},
+): Promise<GeminiDetailedResponse> {
   const start = Date.now();
-  const usesVertexAI = options.vertex === true ||
-    (!options.apiKey && !options.project && !options.location &&
+  const usesVertexAI =
+    options.vertex === true ||
+    (!options.apiKey &&
+      !options.project &&
+      !options.location &&
       Boolean(process.env.AI_PROJECT && process.env.AI_LOCATION));
   const safetyEnabled = options.safetyEnabled ?? !usesVertexAI;
 
@@ -270,30 +285,31 @@ export default async function askGemini<TResponse = unknown>(
 
   detailedData.safetyEnabled = safetyEnabled;
 
-  const safetySettings: SafetySetting[] | undefined = safetyEnabled === false
-    ? [
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-    ]
-    : undefined;
+  const safetySettings: SafetySetting[] | undefined =
+    safetyEnabled === false
+      ? [
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+        ]
+      : undefined;
 
   const webSearch = options.webSearch ?? false;
   const thinkingLevel = options.thinkingLevel ?? null;
@@ -308,15 +324,18 @@ export default async function askGemini<TResponse = unknown>(
       responseJsonSchema: options.schemaJson,
       thinkingConfig: thinkingLevel
         ? {
-          thinkingLevel: ThinkingLevel[
-            thinkingLevel.toUpperCase() as keyof typeof ThinkingLevel
-          ],
-          includeThoughts: true,
-        }
+            thinkingLevel: {
+              minimal: ThinkingLevel.MINIMAL,
+              low: ThinkingLevel.LOW,
+              medium: ThinkingLevel.MEDIUM,
+              high: ThinkingLevel.HIGH,
+            }[thinkingLevel],
+            includeThoughts: true,
+          }
         : {
-          thinkingBudget: options.thinkingBudget ?? 0,
-          includeThoughts: (options.thinkingBudget ?? 0) !== 0,
-        },
+            thinkingBudget: options.thinkingBudget ?? 0,
+            includeThoughts: (options.thinkingBudget ?? 0) !== 0,
+          },
       temperature: options.temperature ?? 0,
       tools: webSearch ? [{ googleSearch: {} }] : undefined,
     },
@@ -325,10 +344,11 @@ export default async function askGemini<TResponse = unknown>(
   // Cache check
   const cacheFiles = (options.cache ?? true) ? initCache(params) : null;
   if (cacheFiles) {
-    const hit = await readAndProcessCache<
-      GeminiDetailedResponse<unknown>,
-      TResponse
-    >(cacheFiles.cacheFile, options.processResponse);
+    const hit = await readAndProcessCache(
+      cacheFiles.cacheFile,
+      (value): GeminiDetailedResponse => geminiCachedResponse.parse(value),
+      options.processResponse,
+    );
     if (hit !== null) {
       return { ...hit, fromCache: true };
     }
@@ -337,7 +357,7 @@ export default async function askGemini<TResponse = unknown>(
   // API call
   const result = await client.models.generateContent({
     ...params,
-    ...(options.geminiParameters ?? {}),
+    ...options.geminiParameters,
   });
 
   let thoughts: string | null = null;
@@ -390,7 +410,7 @@ export default async function askGemini<TResponse = unknown>(
 
   const processedResponse = options.processResponse
     ? await options.processResponse(detailedData.response)
-    : detailedData.response as TResponse;
+    : detailedData.response;
 
   if (cacheFiles) {
     writeCache(cacheFiles.cacheFile, detailedData);

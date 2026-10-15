@@ -1,14 +1,10 @@
-import { assertEquals } from "jsr:@std/assert";
+import { test, describe, expect, vi } from "vite-plus/test";
+import { deepStrictEqual as assertEquals } from "node:assert/strict";
 import askGeminiPool, { runAskGeminiPool } from "../../src/ai/askGeminiPool.ts";
-import type {
-  AskGeminiOptions,
-  GeminiDetailedResponse,
-} from "../../src/ai/askGemini.ts";
+import type { AskGeminiOptions, GeminiDetailedResponse } from "../../src/ai/askGemini.ts";
 import * as z from "zod";
 
-function fakeGeminiResult<TResponse>(
-  response: TResponse,
-): GeminiDetailedResponse<TResponse> {
+function fakeGeminiResult<TResponse>(response: TResponse): GeminiDetailedResponse<TResponse> {
   return {
     response,
     fromCache: false,
@@ -30,12 +26,9 @@ function fakeGeminiResult<TResponse>(
   };
 }
 
-Deno.test("retries synchronous response validation and preserves its type", async () => {
+test("retries synchronous response validation and preserves its type", async () => {
   let attempts = 0;
-  const executeRequest = async (
-    _prompt: string,
-    options: AskGeminiOptions<{ value: string }>,
-  ) => {
+  const executeRequest = async (_prompt: string, options: AskGeminiOptions<{ value: string }>) => {
     const response = options.processResponse
       ? await options.processResponse("raw")
       : { value: "raw" };
@@ -43,16 +36,18 @@ Deno.test("retries synchronous response validation and preserves its type", asyn
   };
 
   const { results, errors } = await runAskGeminiPool(
-    [{
-      prompt: "prompt",
-      processResponse: () => {
-        attempts++;
-        if (attempts === 1) {
-          throw new Error("retry");
-        }
-        return { value: "processed" };
+    [
+      {
+        prompt: "prompt",
+        processResponse: () => {
+          attempts++;
+          if (attempts === 1) {
+            throw new Error("retry");
+          }
+          return { value: "processed" };
+        },
       },
-    }],
+    ],
     1,
     { retry: 1 },
     executeRequest,
@@ -63,33 +58,32 @@ Deno.test("retries synchronous response validation and preserves its type", asyn
   assertEquals(attempts, 2);
 });
 
-Deno.test("supports async response processing and terminal failures", async () => {
-  const executeRequest = async (
-    _prompt: string,
-    options: AskGeminiOptions<string>,
-  ) => {
-    const response = options.processResponse
-      ? await options.processResponse("raw")
-      : "raw";
+test("supports async response processing and terminal failures", async () => {
+  const executeRequest = async (_prompt: string, options: AskGeminiOptions<string>) => {
+    const response = options.processResponse ? await options.processResponse("raw") : "raw";
     return fakeGeminiResult(response);
   };
 
   const successful = await runAskGeminiPool(
-    [{
-      prompt: "prompt",
-      processResponse: async (response) => `${response}-processed`,
-    }],
+    [
+      {
+        prompt: "prompt",
+        processResponse: async (response) => `${String(response)}-processed`,
+      },
+    ],
     1,
     {},
     executeRequest,
   );
   const failed = await runAskGeminiPool(
-    [{
-      prompt: "prompt",
-      processResponse: () => {
-        throw new Error("terminal");
+    [
+      {
+        prompt: "prompt",
+        processResponse: () => {
+          throw new Error("terminal");
+        },
       },
-    }],
+    ],
     1,
     { retry: 1 },
     executeRequest,
@@ -98,12 +92,14 @@ Deno.test("supports async response processing and terminal failures", async () =
   assertEquals(successful.results[0].result.response, "raw-processed");
   assertEquals(failed.results.length, 0);
   assertEquals(failed.errors.length, 1);
-  assertEquals((failed.errors[0].error as Error).message, "terminal");
+  const error = failed.errors[0].error;
+  if (!(error instanceof Error)) throw new Error("Expected terminal Error");
+  assertEquals(error.message, "terminal");
 });
 
-const aiKey = Deno.env.get("AI_KEY") ?? Deno.env.get("AI_PROJECT");
-if (typeof aiKey === "string" && aiKey !== "") {
-  Deno.test("should run the doc example", async () => {
+const aiKey = process.env.AI_KEY || (process.env.AI_PROJECT && process.env.AI_LOCATION);
+describe.skipIf(process.env.CI === "true" || !aiKey || !process.env.AI_MODEL)("live Gemini", () => {
+  test("should run the doc example", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
@@ -120,7 +116,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[0].result.thinkingLevel, null);
     assertEquals(results[0].result.safetyEnabled, false);
   });
-  Deno.test("should use request ids", async () => {
+  test("should use request ids", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { id: "france", prompt: "What is the capital of France?" },
@@ -135,10 +131,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[0].request.id, "france");
     assertEquals(results[1].request.id, "germany");
   });
-  Deno.test("should process requests with options", async () => {
-    const schema = z.toJSONSchema(
-      z.array(z.string()),
-    );
+  test("should process requests with options", async () => {
+    const schema = z.toJSONSchema(z.array(z.string()));
     const { results, errors } = await askGeminiPool(
       [
         {
@@ -159,12 +153,9 @@ if (typeof aiKey === "string" && aiKey !== "") {
 
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
-    assertEquals(
-      results[0].result.systemPrompt,
-      "Answer as a concise travel researcher.",
-    );
+    assertEquals(results[0].result.systemPrompt, "Answer as a concise travel researcher.");
   });
-  Deno.test("should process responses inside the retry loop", async () => {
+  test("should process responses inside the retry loop", async () => {
     let attempts = 0;
     const { results, errors } = await askGeminiPool(
       [
@@ -188,7 +179,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[0].result.response, "processed");
     assertEquals(attempts, 2);
   });
-  Deno.test("should log progress", async () => {
+  test("should log progress", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
@@ -212,7 +203,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 12);
   });
-  Deno.test("should accumulate cost and tokens from pool results", async () => {
+  test("should accumulate cost and tokens from pool results", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
@@ -222,14 +213,8 @@ if (typeof aiKey === "string" && aiKey !== "") {
       2,
       { logProgress: true },
     );
-    const totalCost = results.reduce(
-      (sum, r) => sum + (r.result.estimatedCost ?? 0),
-      0,
-    );
-    const totalTokens = results.reduce(
-      (sum, r) => sum + r.result.totalTokens,
-      0,
-    );
+    const totalCost = results.reduce((sum, r) => sum + (r.result.estimatedCost ?? 0), 0);
+    const totalTokens = results.reduce((sum, r) => sum + r.result.totalTokens, 0);
     console.log({ results, errors });
     console.log("Total cost:", totalCost);
     console.log("Total tokens:", totalTokens);
@@ -237,13 +222,10 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
-  Deno.test("should enforce minimum request duration", async () => {
+  test("should enforce minimum request duration", async () => {
     const start = Date.now();
     const { results, errors } = await askGeminiPool(
-      [
-        { prompt: "What is the capital of France?" },
-        { prompt: "What is the capital of Germany?" },
-      ],
+      [{ prompt: "What is the capital of France?" }, { prompt: "What is the capital of Germany?" }],
       1,
       { minRequestDurationMs: 2000 },
     );
@@ -254,7 +236,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 2);
   });
-  Deno.test("should return results sorted by original index", async () => {
+  test("should return results sorted by original index", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "What is the capital of France?" },
@@ -271,7 +253,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[1].index, 1);
     assertEquals(results[2].index, 2);
   });
-  Deno.test("should use thinking level medium", async () => {
+  test("should use thinking level medium", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "How do you feel?", options: { thinkingLevel: "medium" } },
@@ -291,7 +273,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results[0].result.webSearch, false);
     assertEquals(results[0].result.thinkingLevel, "medium");
   });
-  Deno.test("should run with high thinking level", async () => {
+  test("should run with high thinking level", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "How do you feel?", options: { thinkingLevel: "high" } },
@@ -310,13 +292,13 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
     assertEquals(results[0].result.thinkingLevel, "high");
   });
-  Deno.test("should use a text file as input", async () => {
+  test("should use a text file as input", async () => {
     const { results, errors } = await askGeminiPool(
       [
         {
           prompt: "What is the content of this text file?",
           options: {
-            files: [{ path: "test/data/data.csv", type: "text" as const }],
+            files: [{ path: "test/data/data.csv", type: "text" }],
           },
         },
       ],
@@ -327,7 +309,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 1);
   });
-  Deno.test("should not ground results with web search", async () => {
+  test("should not ground results with web search", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "Who is Nael Shiab (CBC News)?" },
@@ -342,7 +324,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
     assertEquals(results[0].result.webSearch, false);
   });
-  Deno.test("should ground results with web search", async () => {
+  test("should ground results with web search", async () => {
     const { results, errors } = await askGeminiPool(
       [
         {
@@ -366,14 +348,16 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(results.length, 3);
     assertEquals(results[0].result.webSearch, true);
   });
-  Deno.test("should return structured output", async () => {
+  test("should return structured output", async () => {
     const schema = z.toJSONSchema(
       z.object({
-        people: z.array(z.object({
-          name: z.string(),
-          age: z.number(),
-          gender: z.enum(["man", "woman"]),
-        })),
+        people: z.array(
+          z.object({
+            name: z.string(),
+            age: z.number(),
+            gender: z.enum(["man", "woman"]),
+          }),
+        ),
       }),
     );
 
@@ -399,7 +383,7 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
-  Deno.test("should run without thinking level by default", async () => {
+  test("should run without thinking level by default", async () => {
     const { results, errors } = await askGeminiPool(
       [
         { prompt: "How do you feel?" },
@@ -414,6 +398,82 @@ if (typeof aiKey === "string" && aiKey !== "") {
     assertEquals(errors.length, 0);
     assertEquals(results.length, 3);
   });
-} else {
-  console.log("No AI_KEY or AI_PROJECT in process.env");
-}
+});
+
+test("pool concurrency is bounded and results retain input order", async () => {
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  let active = 0;
+  let maximum = 0;
+  const calls: string[] = [];
+  const pending = runAskGeminiPool(
+    [{ prompt: "slow" }, { prompt: "fast" }, { prompt: "third" }],
+    2,
+    {},
+    async (prompt) => {
+      active++;
+      maximum = Math.max(maximum, active);
+      calls.push(prompt);
+      if (prompt === "slow") {
+        entered.resolve();
+        await release.promise;
+      }
+      active--;
+      return fakeGeminiResult(prompt);
+    },
+  );
+  await entered.promise;
+  await Promise.resolve();
+  expect(calls).toEqual(["slow", "fast", "third"]);
+  release.resolve();
+  const result = await pending;
+  expect(maximum).toBe(2);
+  expect(result.errors).toEqual([]);
+  expect(result.results.map((entry) => entry.result.response)).toEqual(["slow", "fast", "third"]);
+});
+
+test("retryCheck can prevent retries and accepts asynchronous decisions", async () => {
+  let calls = 0;
+  const error = new Error("terminal provider failure");
+  const result = await runAskGeminiPool(
+    [{ prompt: "request" }],
+    2,
+    {
+      retry: 3,
+      retryCheck: async (failure) => {
+        expect(failure).toBe(error);
+        return false;
+      },
+    },
+    () => {
+      calls++;
+      return Promise.reject(error);
+    },
+  );
+  expect(calls).toBe(1);
+  expect(result.results).toEqual([]);
+  expect(result.errors[0]?.error).toBe(error);
+});
+
+test("minimum request duration spaces consecutive requests", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+  try {
+    const starts: number[] = [];
+    const pending = runAskGeminiPool(
+      [{ prompt: "one" }, { prompt: "two" }],
+      1,
+      { minRequestDurationMs: 100 },
+      (prompt) => {
+        starts.push(Date.now());
+        return Promise.resolve(fakeGeminiResult(prompt));
+      },
+    );
+    await vi.runAllTimersAsync();
+    const result = await pending;
+    expect(starts).toEqual([0, 100]);
+    expect(result.results).toHaveLength(2);
+  } finally {
+    vi.useRealTimers();
+  }
+});

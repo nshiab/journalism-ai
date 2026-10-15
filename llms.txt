@@ -1,0 +1,12 @@
+# Journalism AI v2.0.8
+
+> Useful TypeScript functions for journalism projects. This library focuses on AI.
+
+- [README](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/README.md): Installation, examples and usage.
+
+## API
+- [askGemini](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/docs/functions/askGemini.md): askGemini function
+- [askGeminiPool](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/docs/functions/askGeminiPool.md): askGeminiPool function
+- [askOllama](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/docs/functions/askOllama.md): askOllama function
+- [getEmbedding](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/docs/functions/getEmbedding.md): getEmbedding function
+- [getEmbeddingIdentity](https://raw.githubusercontent.com/nshiab/journalism-ai/v2.0.8/docs/functions/getEmbeddingIdentity.md): getEmbeddingIdentity function

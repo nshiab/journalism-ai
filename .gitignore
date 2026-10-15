@@ -1,8 +1,7 @@
-node_modules
-test/output/
+node_modules/
+dist/
+site/
+*.tgz
 .DS_Store
 .env
-cov_profile
-.journalism-cache
-docs.json
-npm
+.journalism-cache/
