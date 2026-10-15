@@ -14,8 +14,15 @@ from answering questions to analyzing multimedia content.
 **Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
 (Vertex AI) environment variables, or pass credentials directly via options.
 
-**Caching**: responses are persisted in `.journalism-cache` by default. Set
-`cache: false` to disable caching.
+**Caching**: the model response (parsed for structured output) and request
+metadata are stored in `.journalism-cache` by default, before any user
+processing. `processResponse` is awaited on every call, including cache hits;
+its output is never cached. Changing the callback reuses the same model
+response without another model call. Mutating the callback input does not
+change the stored response. A fresh response is saved only after processing
+succeeds. If processing rejects a cached response, that entry is removed and
+the error is thrown; a subsequent attempt can request a fresh response.
+Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
 
 **File handling**: pass files via `files: [{ path, type }]`. Local paths and
 `gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
@@ -52,7 +59,7 @@ API key; defaults to `AI_KEY` env var.
 
 `boolean`
 
-Cache the response in `.journalism-cache`. Defaults to `true`.
+Cache the model response before user processing, not the callback output. Defaults to true.
 
 #### files?
 
@@ -82,7 +89,7 @@ Model name; defaults to `AI_MODEL` env var.
 
 (`response`) => `TResponse` \| `Promise`\<`TResponse`\>
 
-Transform or validate the response before returning it; rejected cached responses are removed.
+Transform or validate the model response on every call, including cache hits. The callback output is never cached; rejected cached responses are removed.
 
 #### project?
 

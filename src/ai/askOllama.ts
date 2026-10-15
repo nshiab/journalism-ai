@@ -49,12 +49,13 @@ export type AskOllamaOptions<TResponse = unknown> = {
   ollama?: unknown;
   files?: { path: string; type: "image" | "text" }[];
   schemaJson?: unknown;
+  /** Cache the model response before user processing, not the callback output. Defaults to true. */
   cache?: boolean;
   contextWindow?: number;
   thinkingLevel?: boolean | "low" | "medium" | "high";
   temperature?: number;
   ollamaParameters?: Partial<ChatRequest>;
-  /** Transform or validate the response before returning it; rejected cached responses are removed. */
+  /** Transform or validate the model response on every call, including cache hits. The callback output is never cached; rejected cached responses are removed. */
   processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
 };
 
@@ -70,8 +71,15 @@ export type AskOllamaOptions<TResponse = unknown> = {
  * **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
  * and `"text"` types are supported for now.
  *
- * **Caching**: responses are persisted in `.journalism-cache` by default. Set
- * `cache: false` to disable caching.
+ * **Caching**: the model response (parsed for structured output) and request
+ * metadata are stored in `.journalism-cache` by default, before any user
+ * processing. `processResponse` is awaited on every call, including cache hits;
+ * its output is never cached. Changing the callback reuses the same model
+ * response without another model call. Mutating the callback input does not
+ * change the stored response. A fresh response is saved only after processing
+ * succeeds. If processing rejects a cached response, that entry is removed and
+ * the error is thrown; a subsequent attempt can request a fresh response.
+ * Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
  *
  * Temperature defaults to 0 for deterministic responses.
  *
@@ -132,7 +140,6 @@ export type AskOllamaOptions<TResponse = unknown> = {
  * @param options.systemPrompt - Optional system prompt.
  * @param options.files - Files to send alongside the prompt. Only `"image"` and `"text"` types are supported (local paths only; no GCS, audio, video, or PDF). Text files are sent as separate user messages after the prompt; images are sent as attachments to the prompt message.
  * @param options.schemaJson - JSON schema for structured output.
- * @param options.cache - Cache the response in `.journalism-cache`. Defaults to `true`.
  * @param options.contextWindow - Override the model's context window size.
  * @param options.thinkingLevel - Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
  * @param options.temperature - Sampling temperature (default 0).
@@ -299,7 +306,9 @@ export default async function askOllama(
   detailedData.thoughts = thoughts;
 
   const processedResponse = options.processResponse
-    ? await options.processResponse(validatedResponse)
+    ? await options.processResponse(
+        cacheFiles ? structuredClone(detailedData.response) : detailedData.response,
+      )
     : validatedResponse;
 
   if (cacheFiles) {

@@ -334,3 +334,46 @@ test("cached embeddings validate every vector element before returning", async (
   );
   expect(requests).toHaveLength(1);
 });
+
+for (const provider of ["gemini", "ollama"]) {
+  test(`${provider} caches the original response when async processors mutate their input`, async () => {
+    const requests: unknown[] = provider === "gemini" ? mockGemini() : [];
+    const client = fakeOllama('{"value":7}', requests);
+    const schemaJson = z.toJSONSchema(z.object({ value: z.number() }));
+    let callbacks = 0;
+    for (const increment of [1, 2, 3]) {
+      const processResponse = async (response: unknown) => {
+        await Promise.resolve();
+        callbacks++;
+        if (
+          typeof response !== "object" ||
+          response === null ||
+          !("value" in response) ||
+          typeof response.value !== "number"
+        ) {
+          throw new Error("Expected a numeric value");
+        }
+        response.value += increment;
+        return response;
+      };
+      const result =
+        provider === "gemini"
+          ? await askGemini("mutating processor", {
+              ...geminiOptions,
+              cache: true,
+              schemaJson,
+              processResponse,
+            })
+          : await askOllama("mutating processor", {
+              model: "test-model",
+              ollama: client,
+              schemaJson,
+              processResponse,
+            });
+      expect(result.response).toEqual({ value: 7 + increment });
+      expect(result.fromCache).toBe(increment !== 1);
+    }
+    expect(callbacks).toBe(3);
+    expect(requests).toHaveLength(1);
+  });
+}
