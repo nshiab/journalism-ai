@@ -36,6 +36,25 @@ agents, run:
 npx @nshiab/setup-data-project
 ```
 
+## Caching and response processing
+
+`askGemini`, `askOllama`, and `askGeminiPool` cache model responses and request
+metadata in `.journalism-cache` by default. Structured responses are parsed before
+processing. The cache saves model calls; it does not cache your callback's output.
+
+`processResponse` runs on every call, including cache hits, and can be async.
+Changing the callback reuses the original model response and applies your new
+processing without another model call. Modifying its input does not alter the
+stored response.
+
+Fresh responses are cached only after processing succeeds. If your callback
+throws or rejects on a cache hit, that entry is deleted and the error is passed
+to the caller. A subsequent attempt calls the model again; `askGeminiPool` can
+retry according to its retry settings.
+
+Set `cache: false` in the request options to disable caching, or delete
+`.journalism-cache` to clear it. Add that folder to `.gitignore`.
+
 ## Documentation
 
 - [Documentation](https://nshiab.github.io/journalism-ai/)

@@ -19,8 +19,15 @@ non-default host.
 **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
 and `"text"` types are supported for now.
 
-**Caching**: responses are persisted in `.journalism-cache` by default. Set
-`cache: false` to disable caching.
+**Caching**: enabled by default in `.journalism-cache`. The cache contains
+the original model response (parsed for structured output) and request
+metadata. `processResponse` is awaited on every call, including cache hits;
+its output is never cached. Changing the callback reuses the same model
+response without another model call. Mutating the callback input does not
+change the stored response. A fresh response is saved only after processing
+succeeds. If processing rejects a cached response, that entry is removed and
+the error is thrown; a subsequent attempt can request a fresh response.
+Set `cache: false` to disable caching, or remove `.journalism-cache` to clear it.
 
 Temperature defaults to 0 for deterministic responses.
 
@@ -44,7 +51,7 @@ The primary text prompt.
 
 `boolean`
 
-Cache the response in `.journalism-cache`. Defaults to `true`.
+Cache the model response before user processing, not the callback output. Defaults to true.
 
 #### contextWindow?
 
@@ -80,7 +87,7 @@ Extra params merged into `client.chat`.
 
 (`response`) => `TResponse` \| `Promise`\<`TResponse`\>
 
-Transform or validate the response before returning it; rejected cached responses are removed.
+Transform or validate the model response on every call, including cache hits. The callback output is never cached; rejected cached responses are removed.
 
 #### schemaJson?
 
