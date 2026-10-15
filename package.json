@@ -27,6 +27,7 @@
     "access": "public"
   },
   "scripts": {
+    "login": "gcloud auth application-default login",
     "fix": "vp check --fix",
     "docs": "typedoc && node scripts/docs.ts",
     "all-tests": "vp check && vp test && vp pack && npm run docs",
