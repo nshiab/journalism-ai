@@ -1,24 +1,26 @@
+import { ollamaCachedResponse } from "./helpers/cachedResponse.ts";
 import { readFileSync } from "node:fs";
 import process from "node:process";
-import ollama, { Ollama } from "ollama";
-import { fromJSONSchema } from "zod";
+import ollama, { Ollama, type ChatRequest } from "ollama";
+import { fromJSONSchema, z } from "zod";
 import { initCache, readAndProcessCache, writeCache } from "./helpers/cache.ts";
 import { processResponse } from "./helpers/processResponse.ts";
 
-function validateStructuredResponse(
-  response: unknown,
-  schemaJson: unknown,
-): unknown {
+function validateStructuredResponse(response: unknown, schemaJson: unknown): unknown {
   if (schemaJson === undefined) {
     return response;
   }
   const schema = fromJSONSchema(
-    schemaJson as Parameters<typeof fromJSONSchema>[0],
+    typeof schemaJson === "boolean"
+      ? schemaJson
+      : z.record(z.string(), z.unknown()).parse(schemaJson),
   );
   return schema.parse(response);
 }
 
-/** The detailed response shape returned by {@link askOllama}. */
+/** The detailed response shape returned by {@link askOllama}.
+ * @inline
+ */
 export type OllamaDetailedResponse<TResponse = unknown> = {
   response: TResponse;
   fromCache: boolean;
@@ -31,13 +33,16 @@ export type OllamaDetailedResponse<TResponse = unknown> = {
   promptTokenCount: number;
   outputTokenCount: number;
   totalTokens: number;
-  tokensPerSecond: number;
+  /** Tokens per second; cached zero-duration rates are null after JSON serialization. */
+  tokensPerSecond: number | null;
   durationMs: number;
   model: string;
   thoughts: string | null;
 };
 
-/** Configuration accepted by {@link askOllama}. */
+/** Configuration accepted by {@link askOllama}.
+ * @inline
+ */
 export type AskOllamaOptions<TResponse = unknown> = {
   systemPrompt?: string;
   model?: string;
@@ -48,7 +53,8 @@ export type AskOllamaOptions<TResponse = unknown> = {
   contextWindow?: number;
   thinkingLevel?: boolean | "low" | "medium" | "high";
   temperature?: number;
-  ollamaParameters?: unknown;
+  ollamaParameters?: Partial<ChatRequest>;
+  /** Transform or validate the response before returning it; rejected cached responses are removed. */
   processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
 };
 
@@ -131,14 +137,17 @@ export type AskOllamaOptions<TResponse = unknown> = {
  * @param options.thinkingLevel - Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
  * @param options.temperature - Sampling temperature (default 0).
  * @param options.ollamaParameters - Extra params merged into `client.chat`.
- * @param options.processResponse - Transform or validate the response before it is returned. If it rejects a cached response, that cache entry is removed so a retry can generate a fresh response.
  *
  * @category AI
  */
-export default async function askOllama<TResponse = unknown>(
+export default function askOllama<TResponse = unknown>(
   prompt: string,
-  options: AskOllamaOptions<TResponse> = {},
-): Promise<OllamaDetailedResponse<TResponse>> {
+  options?: AskOllamaOptions<TResponse>,
+): Promise<OllamaDetailedResponse<TResponse>>;
+export default async function askOllama(
+  prompt: string,
+  options: AskOllamaOptions = {},
+): Promise<OllamaDetailedResponse> {
   const start = Date.now();
 
   const detailedData: OllamaDetailedResponse = {
@@ -172,9 +181,9 @@ export default async function askOllama<TResponse = unknown>(
 
   const hasSchema = options.schemaJson !== undefined;
   const groundedPrompt = hasSchema
-    ? `${prompt}\n\nReturn JSON matching this schema exactly:\n${
-      JSON.stringify(options.schemaJson)
-    }`
+    ? `${prompt}\n\nReturn JSON matching this schema exactly:\n${JSON.stringify(
+        options.schemaJson,
+      )}`
     : prompt;
 
   // Build message
@@ -204,14 +213,20 @@ export default async function askOllama<TResponse = unknown>(
   detailedData.temperature = options.temperature ?? 0;
   detailedData.files = options.files ?? [];
 
-  const format = hasSchema ? options.schemaJson as string | object : undefined;
+  const format =
+    typeof options.schemaJson === "boolean"
+      ? options.schemaJson
+        ? {}
+        : { not: {} }
+      : typeof options.schemaJson === "string" ||
+          (typeof options.schemaJson === "object" && options.schemaJson !== null)
+        ? options.schemaJson
+        : undefined;
 
   const params = {
     model,
     messages: [
-      ...(options.systemPrompt
-        ? [{ role: "system", content: options.systemPrompt }]
-        : []),
+      ...(options.systemPrompt ? [{ role: "system", content: options.systemPrompt }] : []),
       message,
       ...fileMessages,
     ],
@@ -224,21 +239,20 @@ export default async function askOllama<TResponse = unknown>(
   // Cache check
   const cacheFiles = (options.cache ?? true) ? initCache(params) : null;
   if (cacheFiles) {
-    const processCachedResponse = hasSchema || options.processResponse
-      ? async (response: unknown): Promise<TResponse> => {
-        const validatedResponse = validateStructuredResponse(
-          response,
-          options.schemaJson,
-        );
-        return options.processResponse
-          ? await options.processResponse(validatedResponse)
-          : validatedResponse as TResponse;
-      }
-      : undefined;
-    const hit = await readAndProcessCache<
-      OllamaDetailedResponse,
-      TResponse
-    >(cacheFiles.cacheFile, processCachedResponse);
+    const processCachedResponse =
+      hasSchema || options.processResponse
+        ? async (response: unknown): Promise<unknown> => {
+            const validatedResponse = validateStructuredResponse(response, options.schemaJson);
+            return options.processResponse
+              ? await options.processResponse(validatedResponse)
+              : validatedResponse;
+          }
+        : undefined;
+    const hit = await readAndProcessCache(
+      cacheFiles.cacheFile,
+      (value): OllamaDetailedResponse => ollamaCachedResponse.parse(value),
+      processCachedResponse,
+    );
     if (hit !== null) {
       return { ...hit, fromCache: true };
     }
@@ -254,7 +268,7 @@ export default async function askOllama<TResponse = unknown>(
       num_ctx: options.contextWindow,
     },
     think: params.think,
-    ...(options.ollamaParameters ?? {}),
+    ...options.ollamaParameters,
     stream: false,
   });
 
@@ -265,10 +279,7 @@ export default async function askOllama<TResponse = unknown>(
   const response = processResponse(returnedResponse, {
     parseJson: hasSchema,
   });
-  const validatedResponse = validateStructuredResponse(
-    response,
-    options.schemaJson,
-  );
+  const validatedResponse = validateStructuredResponse(response, options.schemaJson);
 
   detailedData.response = validatedResponse;
 
@@ -289,7 +300,7 @@ export default async function askOllama<TResponse = unknown>(
 
   const processedResponse = options.processResponse
     ? await options.processResponse(validatedResponse)
-    : validatedResponse as TResponse;
+    : validatedResponse;
 
   if (cacheFiles) {
     writeCache(cacheFiles.cacheFile, detailedData);

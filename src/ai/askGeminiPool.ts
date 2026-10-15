@@ -1,20 +1,23 @@
-import askGemini, {
-  type AskGeminiOptions,
-  type GeminiDetailedResponse,
-} from "./askGemini.ts";
+import askGemini, { type AskGeminiOptions, type GeminiDetailedResponse } from "./askGemini.ts";
 import sleep from "./helpers/sleep.ts";
 
-/** A single request object for {@link askGeminiPool}, wrapping a prompt and its options. */
+/** A single request object for {@link askGeminiPool}, wrapping a prompt and its options.
+ * @inline
+ */
 export type AskGeminiPoolRequest<TResponse = unknown> = {
+  /** Optional identifier retained with the result. */
   id?: string;
+  /** Primary text input for Gemini. */
   prompt: string;
-  processResponse?: (
-    response: unknown,
-  ) => TResponse | Promise<TResponse>;
+  /** Transform or validate inside the retry loop; failures are retried. */
+  processResponse?: (response: unknown) => TResponse | Promise<TResponse>;
+  /** Provider options, with caching enabled by default. */
   options?: Omit<AskGeminiOptions<TResponse>, "processResponse">;
 };
 
-/** Configuration for the worker pool. */
+/** Configuration for the worker pool.
+ * @inline
+ */
 export type AskGeminiPoolOptions = {
   logProgress?: boolean;
   retry?: number;
@@ -22,7 +25,9 @@ export type AskGeminiPoolOptions = {
   minRequestDurationMs?: number;
 };
 
-/** Results and terminal errors returned by {@link askGeminiPool}. */
+/** Results and terminal errors returned by {@link askGeminiPool}.
+ * @inline
+ */
 export type AskGeminiPoolResult<TResponse = unknown> = {
   results: {
     index: number;
@@ -145,10 +150,6 @@ type AskGeminiExecutor<TResponse> = (
  * ```
  *
  * @param requests - An array of request objects to process.
- *   @param requests[].id - An optional identifier for the request, useful for matching results back to inputs.
- *   @param requests[].prompt - The primary text input for the AI model.
- *   @param requests[].processResponse - An optional function that transforms or validates the response inside the retry loop. If it throws, the request is retried according to `poolOptions`.
- *   @param requests[].options - Options passed to {@link askGemini} for each individual request. Caching defaults to `true`; set `cache: false` to disable it for that request. See {@link askGemini} for the full list of available options.
  * @param poolSize - The number of concurrent workers processing requests.
  * @param poolOptions - Configuration for the pool execution.
  *   @param poolOptions.logProgress - If `true`, logs progress to the console after each completed or failed request. Defaults to `false`.

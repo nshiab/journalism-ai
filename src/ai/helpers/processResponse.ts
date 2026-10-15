@@ -22,18 +22,16 @@ export function processResponse(
         try {
           return JSON.parse(match[1].trim());
         } catch (error) {
-          const displayResponse = parsed === ""
-            ? "[empty string]"
-            : String(parsed);
+          const displayResponse = parsed === "" ? "[empty string]" : String(parsed);
           throw new Error(
-            `Failed to parse response as JSON: ${error}.\nResponse: ${displayResponse}`,
+            `Failed to parse response as JSON: ${String(error)}.\nResponse: ${displayResponse}`,
           );
         }
       }
 
       const displayResponse = parsed === "" ? "[empty string]" : String(parsed);
       throw new Error(
-        `Failed to parse response as JSON: ${_error}.\nResponse: ${displayResponse}`,
+        `Failed to parse response as JSON: ${String(_error)}.\nResponse: ${displayResponse}`,
       );
     }
   }

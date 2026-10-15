@@ -1,19 +1,21 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert";
+import { test } from "vite-plus/test";
+import { rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { deepStrictEqual as assertEquals, rejects as assertRejects } from "node:assert/strict";
 import getEmbedding from "../../src/ai/getEmbedding.ts";
-import {
-  getEmbeddingIdentity,
-  type GetEmbeddingOptions,
-} from "../../src/ai/embeddingOptions.ts";
+import { getEmbeddingIdentity, type GetEmbeddingOptions } from "../../src/ai/embeddingOptions.ts";
 
 async function withProvider(
   backend: "ollama" | "gemini-api" | "vertex",
   run: (options: GetEmbeddingOptions, requests: () => number) => Promise<void>,
 ): Promise<void> {
-  const cwd = Deno.cwd();
-  const directory = Deno.makeTempDirSync();
+  const cwd = process.cwd();
+  const directory = mkdtempSync(join(tmpdir(), "journalism-ai-"));
   const originalFetch = globalThis.fetch;
   let requests = 0;
-  Deno.chdir(directory);
+  process.chdir(directory);
   globalThis.fetch = () => {
     requests++;
     return Promise.resolve(
@@ -24,36 +26,38 @@ async function withProvider(
       ),
     );
   };
-  const options: GetEmbeddingOptions = backend === "ollama"
-    ? {
-      provider: "ollama",
-      model: "hook-test",
-      ollama: {
-        embeddingEndpoint: "http://hook-test.local:11434",
-        embed: () => {
-          requests++;
-          return Promise.resolve({ embeddings: [[1, 2]] });
-        },
-      },
-    }
-    : {
-      provider: "gemini",
-      model: "hook-test",
-      apiKey: "fake-key",
-      ...(backend === "vertex" ? { vertex: true as const } : {}),
-    };
+  const options: GetEmbeddingOptions =
+    backend === "ollama"
+      ? {
+          provider: "ollama",
+          model: "hook-test",
+          ollama: {
+            embeddingEndpoint: "http://hook-test.local:11434",
+            embed: () => {
+              requests++;
+              return Promise.resolve({ embeddings: [[1, 2]] });
+            },
+          },
+        }
+      : {
+          provider: "gemini",
+          model: "hook-test",
+          apiKey: "fake-key",
+          ...(backend === "vertex" ? { vertex: true } : {}),
+        };
   try {
     await run(options, () => requests);
   } finally {
     globalThis.fetch = originalFetch;
-    Deno.chdir(cwd);
-    Deno.removeSync(directory, { recursive: true });
+    process.chdir(cwd);
+    rmSync(directory, { recursive: true });
   }
 }
 
-for (const backend of ["ollama", "gemini-api", "vertex"] as const) {
+const backends: ("ollama" | "gemini-api" | "vertex")[] = ["ollama", "gemini-api", "vertex"];
+for (const backend of backends) {
   for (const cache of [true, false]) {
-    Deno.test(`${backend} awaits the request hook with cache=${cache}`, async () => {
+    test(`${backend} awaits the request hook with cache=${cache}`, async () => {
       await withProvider(backend, async (options, requests) => {
         const entered = Promise.withResolvers<void>();
         const release = Promise.withResolvers<void>();
@@ -77,7 +81,7 @@ for (const backend of ["ollama", "gemini-api", "vertex"] as const) {
     });
   }
 
-  Deno.test(`${backend} cache hits skip changed hooks and preserve identity`, async () => {
+  test(`${backend} cache hits skip changed hooks and preserve identity`, async () => {
     await withProvider(backend, async (options, requests) => {
       let hooks = 0;
       const first = {
@@ -101,23 +105,17 @@ for (const backend of ["ollama", "gemini-api", "vertex"] as const) {
     });
   });
 
-  Deno.test(`${backend} hook failure prevents dispatch and caller retry invokes it again`, async () => {
+  test(`${backend} hook failure prevents dispatch and caller retry invokes it again`, async () => {
     await withProvider(backend, async (options, requests) => {
       let hooks = 0;
       const retryable = {
         ...options,
         beforeRequest: () => {
           hooks++;
-          return hooks === 1
-            ? Promise.reject(new Error("pacing failed"))
-            : Promise.resolve();
+          return hooks === 1 ? Promise.reject(new Error("pacing failed")) : Promise.resolve();
         },
       };
-      await assertRejects(
-        () => getEmbedding("text", retryable),
-        Error,
-        "pacing failed",
-      );
+      await assertRejects(() => getEmbedding("text", retryable), /pacing failed/);
       assertEquals(requests(), 0);
       assertEquals(await getEmbedding("text", retryable), [1, 2]);
       assertEquals(hooks, 2);

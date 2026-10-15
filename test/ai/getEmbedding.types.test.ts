@@ -1,7 +1,9 @@
-import { getEmbedding, type GetEmbeddingOptions } from "../../src/index.ts";
+import { test, expectTypeOf } from "vite-plus/test";
+import { getEmbedding } from "../../src/index.ts";
+type GetEmbeddingOptions = NonNullable<Parameters<typeof getEmbedding>[1]>;
 import { Ollama } from "ollama";
 
-Deno.test("embedding options are provider-aware at compile time", () => {
+test("embedding options are provider-aware at compile time", () => {
   const validOptions: GetEmbeddingOptions[] = [
     { model: "environment-model", cache: true, verbose: false },
     { provider: "gemini", model: "gemini-model", apiKey: "key" },
@@ -20,33 +22,25 @@ Deno.test("embedding options are provider-aware at compile time", () => {
     },
   ];
 
-  if (false) {
-    for (const options of validOptions) void getEmbedding("text", options);
-
-    // @ts-expect-error Providerless options contain common fields only.
-    void getEmbedding("text", { model: "model", apiKey: "key" });
-    void getEmbedding("text", {
-      provider: "gemini",
-      model: "model",
-      // @ts-expect-error Ollama fields are not valid for Gemini.
-      contextWindow: 2_048,
-    });
-    void getEmbedding("text", {
-      provider: "ollama",
-      model: "model",
-      // @ts-expect-error Gemini fields are not valid for Ollama.
-      apiKey: "key",
-    });
-    // @ts-expect-error Vertex deployment fields require explicit Vertex selection.
-    void getEmbedding("text", {
-      provider: "gemini",
-      model: "model",
-      project: "project",
-      location: "location",
-    });
-    // @ts-expect-error Boolean Ollama selection is deprecated in the public type.
-    void getEmbedding("text", { model: "model", ollama: true });
-  }
+  expectTypeOf(validOptions).toExtend<GetEmbeddingOptions[]>();
+  expectTypeOf<{ model: string; apiKey: string }>().not.toExtend<GetEmbeddingOptions>();
+  expectTypeOf<{
+    provider: "gemini";
+    model: string;
+    contextWindow: number;
+  }>().not.toExtend<GetEmbeddingOptions>();
+  expectTypeOf<{
+    provider: "ollama";
+    model: string;
+    apiKey: string;
+  }>().not.toExtend<GetEmbeddingOptions>();
+  expectTypeOf<{
+    provider: "gemini";
+    model: string;
+    project: string;
+    location: string;
+  }>().not.toExtend<GetEmbeddingOptions>();
+  expectTypeOf<{ model: string; ollama: true }>().not.toExtend<GetEmbeddingOptions>();
 
   if (validOptions.length !== 4) throw new Error("Invalid type fixture");
 });
