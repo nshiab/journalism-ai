@@ -19,9 +19,9 @@ non-default host.
 **File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
 and `"text"` types are supported for now.
 
-**Caching**: the model response (parsed for structured output) and request
-metadata are stored in `.journalism-cache` by default, before any user
-processing. `processResponse` is awaited on every call, including cache hits;
+**Caching**: enabled by default in `.journalism-cache`. The cache contains
+the original model response (parsed for structured output) and request
+metadata. `processResponse` is awaited on every call, including cache hits;
 its output is never cached. Changing the callback reuses the same model
 response without another model call. Mutating the callback input does not
 change the stored response. A fresh response is saved only after processing

@@ -12,9 +12,9 @@ Processes multiple Gemini requests concurrently using a pool of workers. This fu
 
 Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
 
-**Caching**: each request uses [askGemini](askGemini.md)'s default caching behavior, so
-model responses and request metadata are stored in `.journalism-cache` by
-default, before user processing. Each request's `processResponse` runs on
+**Caching**: each request uses [askGemini](askGemini.md)'s default caching behavior.
+The cache in `.journalism-cache` contains original model responses and request
+metadata. Each request's `processResponse` runs on
 every attempt, including cache hits; its output is never cached. Changing it
 reuses the model response without another model call, and mutations to its
 input do not change the stored response. Fresh responses are saved only after
