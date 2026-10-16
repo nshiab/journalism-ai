@@ -147,7 +147,7 @@ GCP project ID; defaults to `AI_PROJECT` env var.
 
 `boolean`
 
-Override safety filter defaults.
+Override safety filter defaults; this library requires `true` with API-key authentication.
 
 ###### schemaJson?
 

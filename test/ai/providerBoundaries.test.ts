@@ -56,11 +56,12 @@ function fakeOllama(content: string, requests: unknown[]) {
   });
 }
 
-test("Gemini forwards request controls and retains token, thought, and cost accounting", async () => {
+test("Vertex Gemini forwards request controls and retains token, thought, and cost accounting", async () => {
   const requests = mockGemini();
   const schemaJson = z.toJSONSchema(z.object({ value: z.number() }));
   const result = await askGemini("question", {
     ...geminiOptions,
+    vertex: true,
     systemPrompt: "system",
     schemaJson,
     thinkingLevel: "high",
