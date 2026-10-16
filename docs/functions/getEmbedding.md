@@ -1,4 +1,4 @@
-[**Journalism AI v3.0.5**](../index.md)
+[**Journalism AI v3.0.6**](../index.md)
 
 ***
 
