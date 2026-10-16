@@ -3,12 +3,14 @@
   "entryPoints": ["src/index.ts"],
   "name": "Journalism AI",
   "includeVersion": true,
-  "validation": { "notDocumented": true },
+  "validation": {
+    "notDocumented": true
+  },
   "requiredToBeDocumented": ["Function", "Class", "Method", "Accessor"],
   "treatValidationWarningsAsErrors": true,
   "excludePrivate": true,
   "excludeProtected": true,
-  "plugin": ["typedoc-plugin-markdown", "typedoc-plugin-llms-txt"],
+  "plugin": ["typedoc-github-theme", "typedoc-plugin-markdown", "typedoc-plugin-llms-txt"],
   "hostedBaseUrl": "https://nshiab.github.io/journalism-ai/",
   "outputs": [
     {
@@ -26,7 +28,8 @@
         "entryFileName": "llm.md",
         "mergeReadme": true,
         "cleanOutputDir": false,
-        "llmsTxt": false
+        "llmsTxt": false,
+        "theme": "default"
       }
     },
     {
@@ -37,7 +40,8 @@
         "out": "docs",
         "llmsTxtHeader": {
           "features": ["[README](../README.md): Installation, examples and usage."]
-        }
+        },
+        "theme": "default"
       }
     }
   ],
