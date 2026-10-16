@@ -3,7 +3,7 @@ import { readdir } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { deepStrictEqual as assertEquals, rejects } from "node:assert/strict";
 import askGemini from "../../src/ai/askGemini.ts";
 import { existsSync, rmSync } from "node:fs";
 import * as z from "zod";
@@ -75,6 +75,28 @@ test("caches Gemini responses by default and supports opting out", async () => {
 });
 
 const aiKey = process.env.AI_KEY || (process.env.AI_PROJECT && process.env.AI_LOCATION);
+test("rejects disabled safety with an API key before making a request", async () => {
+  const originalFetch = globalThis.fetch;
+  let requests = 0;
+  globalThis.fetch = () => {
+    requests++;
+    throw new Error("Unexpected network request");
+  };
+  try {
+    await rejects(
+      askGemini("Paris?", {
+        apiKey: "test-key",
+        model: "test-model",
+        safetyEnabled: false,
+      }),
+      { message: "Use safetyEnabled: true with Gemini API-key authentication." },
+    );
+    assertEquals(requests, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 describe.skipIf(process.env.CI === "true" || !aiKey || !process.env.AI_MODEL)("live Gemini", () => {
   if (existsSync("./.journalism-cache")) {
     rmSync("./.journalism-cache", { recursive: true });

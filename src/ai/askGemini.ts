@@ -173,7 +173,7 @@ export type AskGeminiOptions<TResponse = unknown> = {
  * @param options.thinkingBudget - Reasoning token budget. Use `0` to disable thinking, `-1` for a dynamic budget, or a positive number for a fixed budget. Ignored when `thinkingLevel` is provided.
  * @param options.thinkingLevel - Thinking level: "minimal" | "low" | "medium" | "high".
  * @param options.temperature - Sampling temperature sent to Gemini.
- * @param options.safetyEnabled - Override safety filter defaults.
+ * @param options.safetyEnabled - Override safety filter defaults; this library requires `true` with API-key authentication.
  * @param options.geminiParameters - Extra params merged into `generateContent`.
  *
  * @category AI
@@ -194,6 +194,9 @@ export default async function askGemini(
       !options.location &&
       Boolean(process.env.AI_PROJECT && process.env.AI_LOCATION));
   const safetyEnabled = options.safetyEnabled ?? !usesVertexAI;
+  if (!usesVertexAI && !safetyEnabled) {
+    throw new Error("Use safetyEnabled: true with Gemini API-key authentication.");
+  }
 
   const detailedData: GeminiDetailedResponse<unknown> = {
     response: undefined,
