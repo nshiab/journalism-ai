@@ -56,6 +56,8 @@ for development commands.
 
 > **askGemini**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `safetyEnabled`: `boolean`; `systemPrompt`: `string` \| `null`; `thinkingLevel`: `"minimal"` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `webSearch`: `boolean`; \}\>
 
+Defined in: [askGemini.ts:181](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askGemini.ts#L181)
+
 Interacts with Google's Gemini models to perform a wide range of tasks,
 from answering questions to analyzing multimedia content.
 
@@ -260,6 +262,8 @@ console.log(`${result.totalTokens} tokens, $${result.estimatedCost}`);
 
 > **askGeminiPool**\<`TResponse`\>(`requests`, `poolSize`, `poolOptions?`): `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
 
+Defined in: [askGeminiPool.ts:165](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askGeminiPool.ts#L165)
+
 Processes multiple Gemini requests concurrently using a pool of workers. This function wraps [askGemini](#askgemini) and manages parallel execution, retries, progress logging, and error handling for batch operations.
 
 Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
@@ -421,6 +425,8 @@ for (const r of results) {
 
 > **askOllama**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `contextWindow`: `number` \| `null`; `durationMs`: `number`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `systemPrompt`: `string` \| `null`; `temperature`: `number`; `thinkingLevel`: `boolean` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; \}\>
 
+Defined in: [askOllama.ts:146](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askOllama.ts#L146)
+
 Interacts with a local Ollama model to perform a wide range of tasks.
 
 Ollama must be running on the machine. Set the `AI_MODEL` environment
@@ -578,6 +584,8 @@ console.log(`${result.totalTokens} tokens in ${result.durationMs}ms`);
 ### getEmbedding()
 
 > **getEmbedding**(`text`, `options?`): `Promise`\<`number`[]\>
+
+Defined in: [getEmbedding.ts:103](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/getEmbedding.ts#L103)
 
 Generates a numerical embedding (vector representation) for a given text string. Embeddings are crucial for various natural language processing (NLP) tasks, including semantic search, text classification, clustering, and anomaly detection, as they allow text to be processed and compared mathematically.
 
@@ -1047,6 +1055,8 @@ const embedding = await getEmbedding("Local reporting matters.", {
 ### getEmbeddingIdentity()
 
 > **getEmbeddingIdentity**(`options?`, `environment?`): \{ `backend`: `"gemini-api"`; `model`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"vertex"`; `location?`: `string`; `model`: `string`; `project?`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"ollama"`; `contextWindow?`: `number`; `endpoint`: `string`; `model`: `string`; `provider`: `"ollama"`; `schemaVersion`: `2`; \}
+
+Defined in: [embeddingOptions.ts:379](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/embeddingOptions.ts#L379)
 
 Returns the canonical, non-secret identity for an embedding request.
 Downstream persisted data can compare this value to decide whether vectors

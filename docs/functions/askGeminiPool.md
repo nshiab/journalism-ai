@@ -8,6 +8,8 @@
 
 > **askGeminiPool**\<`TResponse`\>(`requests`, `poolSize`, `poolOptions?`): `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
 
+Defined in: [askGeminiPool.ts:165](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askGeminiPool.ts#L165)
+
 Processes multiple Gemini requests concurrently using a pool of workers. This function wraps [askGemini](askGemini.md) and manages parallel execution, retries, progress logging, and error handling for batch operations.
 
 Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
