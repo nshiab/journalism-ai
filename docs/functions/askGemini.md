@@ -1,4 +1,4 @@
-[**Journalism AI v3.0.6**](../index.md)
+[**Journalism AI v3.0.7**](../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **askGemini**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `safetyEnabled`: `boolean`; `systemPrompt`: `string` \| `null`; `thinkingLevel`: `"minimal"` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `webSearch`: `boolean`; \}\>
 
-Defined in: [askGemini.ts:181](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askGemini.ts#L181)
+Defined in: [askGemini.ts:181](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askGemini.ts#L181)
 
 Interacts with Google's Gemini models to perform a wide range of tasks,
 from answering questions to analyzing multimedia content.

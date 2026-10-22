@@ -1,4 +1,4 @@
-[**Journalism AI v3.0.6**](../index.md)
+[**Journalism AI v3.0.7**](../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **getEmbedding**(`text`, `options?`): `Promise`\<`number`[]\>
 
-Defined in: [getEmbedding.ts:103](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/getEmbedding.ts#L103)
+Defined in: [getEmbedding.ts:103](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/getEmbedding.ts#L103)
 
 Generates a numerical embedding (vector representation) for a given text string. Embeddings are crucial for various natural language processing (NLP) tasks, including semantic search, text classification, clustering, and anomaly detection, as they allow text to be processed and compared mathematically.
 

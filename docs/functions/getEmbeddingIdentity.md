@@ -1,4 +1,4 @@
-[**Journalism AI v3.0.6**](../index.md)
+[**Journalism AI v3.0.7**](../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **getEmbeddingIdentity**(`options?`, `environment?`): \{ `backend`: `"gemini-api"`; `model`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"vertex"`; `location?`: `string`; `model`: `string`; `project?`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"ollama"`; `contextWindow?`: `number`; `endpoint`: `string`; `model`: `string`; `provider`: `"ollama"`; `schemaVersion`: `2`; \}
 
-Defined in: [embeddingOptions.ts:379](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/embeddingOptions.ts#L379)
+Defined in: [embeddingOptions.ts:379](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/embeddingOptions.ts#L379)
 
 Returns the canonical, non-secret identity for an embedding request.
 Downstream persisted data can compare this value to decide whether vectors

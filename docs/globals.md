@@ -1,8 +1,8 @@
-[**Journalism AI v3.0.6**](index.md)
+[**Journalism AI v3.0.7**](index.md)
 
 ***
 
-# Journalism AI v3.0.6
+# Journalism AI v3.0.7
 
 ## AI
 

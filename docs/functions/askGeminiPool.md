@@ -1,4 +1,4 @@
-[**Journalism AI v3.0.6**](../index.md)
+[**Journalism AI v3.0.7**](../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **askGeminiPool**\<`TResponse`\>(`requests`, `poolSize`, `poolOptions?`): `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
 
-Defined in: [askGeminiPool.ts:165](https://github.com/nshiab/journalism-ai/blob/v3.0.6/src/ai/askGeminiPool.ts#L165)
+Defined in: [askGeminiPool.ts:165](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askGeminiPool.ts#L165)
 
 Processes multiple Gemini requests concurrently using a pool of workers. This function wraps [askGemini](askGemini.md) and manages parallel execution, retries, progress logging, and error handling for batch operations.
 
