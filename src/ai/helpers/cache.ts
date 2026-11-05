@@ -7,12 +7,12 @@ const CACHE_PATH = "./.journalism-cache";
  * Initialises the cache directory and returns a deterministic file path
  * derived from a SHA-256 hash of the request parameters.
  */
-export function initCache(hashInput: unknown): { cacheFile: string } {
+export function initCache(hashInput: unknown, namespace = "askAI"): { cacheFile: string } {
   if (!existsSync(CACHE_PATH)) {
     mkdirSync(CACHE_PATH);
   }
   const hash = crypto.createHash("sha256").update(JSON.stringify(hashInput)).digest("hex");
-  return { cacheFile: `${CACHE_PATH}/askAI-${hash}.json` };
+  return { cacheFile: `${CACHE_PATH}/${namespace}-${hash}.json` };
 }
 
 /**
@@ -37,20 +37,29 @@ export function writeCache(cacheFile: string, response: unknown): void {
  * transform rejects the cached value, the cache entry is removed so a retry
  * can generate a fresh response.
  */
+export function readAndProcessCache<TCached extends { response: unknown }>(
+  cacheFile: string,
+  decode: (value: unknown) => TCached,
+): Promise<TCached | null>;
+export function readAndProcessCache<TCached extends { response: unknown }>(
+  cacheFile: string,
+  decode: (value: unknown) => TCached,
+  processResponse: (response: unknown) => unknown,
+): Promise<TCached | (Omit<TCached, "response"> & { response: unknown }) | null>;
 export async function readAndProcessCache<TCached extends { response: unknown }>(
   cacheFile: string,
   decode: (value: unknown) => TCached,
   processResponse?: (response: unknown) => unknown,
 ): Promise<TCached | (Omit<TCached, "response"> & { response: unknown }) | null> {
-  const value = readCache(cacheFile);
-  if (value === null) return null;
   try {
+    const value = readCache(cacheFile);
+    if (value === null) return null;
     const cached = decode(value);
     return processResponse
       ? { ...cached, response: await processResponse(cached.response) }
       : cached;
   } catch (error) {
-    rmSync(cacheFile);
+    rmSync(cacheFile, { force: true });
     throw error;
   }
 }

@@ -41,3 +41,20 @@ test("removes a cached response when processing rejects it", async () => {
 
   assertEquals(existsSync(cacheFile), false);
 });
+
+test("removes truncated JSON so the next caller can retry", async () => {
+  const cacheFile = `cache-${crypto.randomUUID()}.json`;
+  writeFileSync(cacheFile, '{"response":');
+  await assertRejects(
+    () =>
+      readAndProcessCache(cacheFile, (value) => z.object({ response: z.unknown() }).parse(value)),
+    SyntaxError,
+  );
+  assertEquals(existsSync(cacheFile), false);
+  assertEquals(
+    await readAndProcessCache(cacheFile, (value) =>
+      z.object({ response: z.unknown() }).parse(value),
+    ),
+    null,
+  );
+});

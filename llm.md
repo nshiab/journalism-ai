@@ -23,13 +23,92 @@ journalist and senior data producer for [CBC News](https://www.cbc.ca/news).
 npm install @nshiab/journalism-ai
 ```
 
-```ts
-import { askGemini } from "@nshiab/journalism-ai";
+Configure your environment:
 
-// Set AI_KEY and AI_MODEL in your environment first.
-const result = await askGemini("What is the capital of France?");
+```sh
+AI_PROVIDER=gemini
+AI_KEY=your-key
+AI_MODEL=your-model
+```
+
+```ts
+import { askAI } from "@nshiab/journalism-ai";
+
+const result = await askAI("What is the capital of France?");
 console.log(result.response);
 ```
+
+`AI_PROVIDER` is required. Choose `openai`, `anthropic`, `gemini`,
+`google-agent-platform`, or `ollama`. All cloud API keys use `AI_KEY`; Ollama
+ignores it and connects locally (or to `OLLAMA_HOST`). Google Agent Platform,
+formerly Vertex AI, also supports application credentials with `AI_PROJECT` and
+optional `AI_LOCATION`. Built-in adapters connect directly to the providers;
+no Vercel account or gateway is required.
+
+## Structured output and files
+
+```ts
+import { askAI } from "@nshiab/journalism-ai";
+import { z } from "zod";
+
+const result = await askAI("List the people mentioned in this article.", {
+  files: [{ path: "article.txt", type: "text" }],
+  schemaJson: z.toJSONSchema(z.array(z.string())),
+  processResponse: (value) => z.array(z.string()).parse(value),
+});
+console.log(result.response.join(", "));
+```
+
+Text and images work with supporting models; cloud models also accept PDFs.
+Audio/video require Google, and `gs://` URLs require Google Agent Platform.
+Responses include token usage, timing, reasoning when available, warnings and
+web-search sources. Use `webSearch: true` for provider-native search.
+
+Responses are cached in `.journalism-cache` by default; add it to `.gitignore`.
+`processResponse` runs on every call, including cache hits, and its output is
+never cached. Use `cache: false` to disable caching. Retries default to zero.
+
+## Concurrent requests
+
+```ts
+import { askAIPool } from "@nshiab/journalism-ai";
+
+const { results, errors } = await askAIPool(
+  [
+    { id: "france", prompt: "What is the capital of France?" },
+    { id: "germany", prompt: "What is the capital of Germany?" },
+  ],
+  5,
+  { retry: 2 },
+);
+
+for (const entry of results) console.log(entry.request.id, entry.result.response);
+console.log(`${errors.length} failed`);
+```
+
+Each request accepts `options` like `askAI`. The pool handles concurrency,
+retries and optional pacing through `minRequestDurationMs`. Results and errors
+are returned in input order.
+
+## Embeddings
+
+```ts
+import { getEmbedding } from "@nshiab/journalism-ai";
+
+// Set AI_EMBEDDINGS_MODEL first.
+const vector = await getEmbedding("Local reporting matters.");
+console.log(vector.length);
+```
+
+Embeddings use `AI_PROVIDER`, or `AI_EMBEDDINGS_PROVIDER` when a different service
+is needed. OpenAI, Gemini, Google Agent Platform and Ollama are supported;
+Anthropic has no native embedding model. Vectors are cached by provider, model
+and settings. `getEmbeddingIdentity` identifies compatible persisted vectors.
+
+See the [v4 migration guide](https://github.com/nshiab/journalism-ai/blob/main/MIGRATION.md)
+for changes from the provider-specific functions.
+
+## Starting a data project
 
 To start a data project with folders, configuration and documentation for AI
 agents, run:
@@ -52,32 +131,34 @@ for development commands.
 
 ## AI
 
-### askGemini()
+### askAI()
 
-> **askGemini**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `safetyEnabled`: `boolean`; `systemPrompt`: `string` \| `null`; `thinkingLevel`: `"minimal"` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `webSearch`: `boolean`; \}\>
+> **askAI**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `finishReason`: `string`; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `provider`: `string`; `response`: `TResponse`; `sources`: `object`[]; `systemPrompt`: `string` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `warnings`: `object`[]; \}\>
 
-Defined in: [askGemini.ts:181](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askGemini.ts#L181)
+Defined in: [askAI.ts:64](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askAI.ts#L64)
 
-Interacts with Google's Gemini models to perform a wide range of tasks,
-from answering questions to analyzing multimedia content.
+Asks an AI model for text or validated structured data.
 
-**Authentication**: set `AI_KEY` (API key) or `AI_PROJECT` + `AI_LOCATION`
-(Vertex AI) environment variables, or pass credentials directly via options.
+Set `AI_PROVIDER`, `AI_MODEL` and `AI_KEY`. Providers are `openai`,
+`anthropic`, `gemini`, `google-agent-platform` and `ollama`. Ollama ignores
+`AI_KEY`; Google Agent Platform also supports application credentials with
+`AI_PROJECT` and optional `AI_LOCATION` (default `global`). Explicit model and credential options
+override their environment values. Provider selection is never inferred from keys.
 
-**Caching**: model calls can be slow and costly, so original responses are
-cached in `.journalism-cache` by default. `processResponse` reruns on every
-call, including cache hits, and its output is never cached. Keep it lightweight
-and optimize heavier processing, especially for large workloads.
-Set `cache: false` to disable caching.
+Original responses are cached in `.journalism-cache` by default. Add that
+directory to `.gitignore`, or set `cache: false`. `processResponse` runs on
+every call, including cache hits, and its output is never cached.
 
-**File handling**: pass files via `files: [{ path, type }]`. Local paths and
-`gs://` GCS URLs are both supported for images, audio, video, PDF, and text.
+Pass a JSON Schema through `schemaJson` for locally validated output. Arrays
+and primitives are supported through an internal object envelope. Failed,
+refused or incomplete responses are not cached. Local file contents are part
+of cache identity; version mutable GCS objects with `cacheKey` or disable cache.
 
-**Web Search Grounding**: set `webSearch: true` to let the model search the
-web in real time (extra API cost).
-
-Safety filters are on by default (`true`) but off when using Vertex AI
-(`false`); override with `safetyEnabled`.
+Images/text work with supported models; cloud models also accept PDFs.
+Audio/video require Google; `gs://` URLs require Google Agent Platform.
+Sampling is left to the model. `maxRetries` defaults to zero; each uncached
+dispatch awaits `beforeRequest`. Model-specific settings use `providerOptions`.
+Known Gemini API costs are estimated; other model costs are `null`.
 
 #### Type Parameters
 
@@ -95,184 +176,143 @@ The primary text prompt.
 
 ##### options?
 
+Model, files, caching and response processing. A custom AI SDK
+v4 model adapter can be passed as `model`; configure its credentials directly
+and provide a non-secret deployment/configuration `cacheKey`, or disable cache.
+
+###### abortSignal?
+
+`AbortSignal`
+
 ###### apiKey?
 
 `string`
 
-API key; defaults to `AI_KEY` env var.
+###### baseURL?
+
+`string`
+
+###### beforeRequest?
+
+() => `void` \| `Promise`\<`void`\>
 
 ###### cache?
 
 `boolean`
 
-Cache the model response before user processing, not the callback output. Defaults to true.
+###### cacheKey?
+
+`string`
+
+###### fetch?
+
+\{(`input`, `init?`): `Promise`\<`Response`\>; (`input`, `init?`): `Promise`\<`Response`\>; \}
 
 ###### files?
 
 `object`[]
 
-Files to send alongside the prompt, in order. Each entry has a `path` (local path or `gs://` URL) and a `type` (`"image"`, `"video"`, `"audio"`, `"pdf"`, or `"text"`). All files are appended as separate content parts after the prompt.
-
-###### geminiParameters?
-
-`Partial`\<`GenerateContentParameters`\>
-
-Extra params merged into `generateContent`.
-
 ###### location?
 
 `string`
 
-GCP location; defaults to `AI_LOCATION` env var.
+###### maxOutputTokens?
+
+`number`
+
+###### maxRetries?
+
+`number`
 
 ###### model?
 
-`string`
-
-Model name; defaults to `AI_MODEL` env var.
+`string` \| \{ `doGenerate`: (`options`) => `PromiseLike`\<`LanguageModelV4GenerateResult`\>; `doStream`: (`options`) => `PromiseLike`\<`LanguageModelV4StreamResult`\>; `modelId`: `string`; `provider`: `string`; `specificationVersion`: `"v4"`; `supportedUrls`: `Record`\<`string`, `RegExp`[]\> \| `PromiseLike`\<`Record`\<`string`, `RegExp`[]\>\>; \}
 
 ###### processResponse?
 
 (`response`) => `TResponse` \| `Promise`\<`TResponse`\>
 
-Transform or validate the model response on every call, including cache hits. The callback output is never cached; rejected cached responses are removed.
-
 ###### project?
 
 `string`
 
-GCP project ID; defaults to `AI_PROJECT` env var.
+###### providerOptions?
 
-###### safetyEnabled?
+\{\[`provider`: `string`\]: `object`; \}
 
-`boolean`
+###### reasoning?
 
-Override safety filter defaults; this library requires `true` with API-key authentication.
+`"none"` \| `"high"` \| `"low"` \| `"medium"` \| `"provider-default"` \| `"minimal"` \| `"xhigh"` \| `"max"`
 
 ###### schemaJson?
 
 `unknown`
 
-Zod JSON schema for structured output.
-
 ###### systemPrompt?
 
 `string`
-
-Optional system prompt.
 
 ###### temperature?
 
 `number`
 
-Sampling temperature sent to Gemini.
-
-###### thinkingBudget?
-
-`number`
-
-Reasoning token budget. Use `0` to disable thinking, `-1` for a dynamic budget, or a positive number for a fixed budget. Ignored when `thinkingLevel` is provided.
-
-###### thinkingLevel?
-
-`"minimal"` \| `"low"` \| `"medium"` \| `"high"`
-
-Thinking level: "minimal" | "low" | "medium" | "high".
-
-###### vertex?
-
-`boolean`
-
-Use Vertex AI authentication.
-
 ###### webSearch?
 
 `boolean`
 
-Enable web search grounding (extra cost).
-
 #### Returns
 
-`Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `safetyEnabled`: `boolean`; `systemPrompt`: `string` \| `null`; `thinkingLevel`: `"minimal"` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `webSearch`: `boolean`; \}\>
+`Promise`\<\{ `durationMs`: `number`; `estimatedCost`: `number` \| `null`; `finishReason`: `string`; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `provider`: `string`; `response`: `TResponse`; `sources`: `object`[]; `systemPrompt`: `string` \| `null`; `thoughts`: `string` \| `null`; `thoughtsTokenCount`: `number`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; `warnings`: `object`[]; \}\>
+
+The response with provider, cache, usage, reasoning, timing, warnings
+and web-search sources. Output-token counts include reasoning tokens.
 
 #### Examples
 
 ```ts
-const result = await askGemini("What is the capital of France?");
-console.log(result.response); // "Paris"
+import { askAI } from "@nshiab/journalism-ai";
+// Set AI_PROVIDER=openai, AI_KEY and AI_MODEL first.
+const result = await askAI("What is the capital of France?");
+console.log(result.response);
 ```
 
 ```ts
-// Pass credentials directly.
-const response = await askGemini("What is the capital of France?", {
-  apiKey: "your_api_key",
-  model: "gemini-3.5-flash",
+import { askAI } from "@nshiab/journalism-ai";
+import { z } from "zod";
+const result = await askAI("List three countries.", {
+  schemaJson: z.toJSONSchema(z.array(z.string())),
+  processResponse: (value) => z.array(z.string()).parse(value),
 });
+console.log(result.response.join(", "));
+```
 
-// Vertex AI.
-const vertexResponse = await askGemini("What is the capital of France?", {
-  vertex: true,
-  project: "your_project_id",
-  location: "us-central1",
+```ts
+import { askAI } from "@nshiab/journalism-ai";
+const result = await askAI("Describe this image.", {
+  files: [{ path: "photo.png", type: "image" }],
 });
-```
-
-```ts
-// Web search grounding.
-const factCheck = await askGemini(
-  `Verify: "Renewable energy now accounts for over 30% of global electricity generation."`,
-  { webSearch: true },
-);
-```
-
-```ts
-// Structured JSON output with a Zod schema.
-import * as z from "zod";
-const schema = z.toJSONSchema(z.array(z.object({ name: z.string(), age: z.number() })));
-await askGemini("Give me 10 random people.", { schemaJson: schema });
-```
-
-```ts
-// Analyse a local image.
-const info = await askGemini("Describe this image.", {
-  files: [{ path: "./photo.jpg", type: "image" }],
-});
-```
-
-```ts
-// Analyse a file stored in Google Cloud Storage.
-const result = await askGemini("Summarize this document.", {
-  files: [{ path: "gs://my-bucket/report.pdf", type: "pdf" }],
-  vertex: true,
-  project: "my-gcp-project",
-  location: "us-central1",
-});
-```
-
-```ts
-// Access token usage and estimated cost directly from the response.
-const result = await askGemini("What is the capital of France?");
-console.log(result.response); // "Paris"
-console.log(`${result.totalTokens} tokens, $${result.estimatedCost}`);
+console.log(result.response);
 ```
 
 ***
 
-### askGeminiPool()
+### askAIPool()
 
-> **askGeminiPool**\<`TResponse`\>(`requests`, `poolSize`, `poolOptions?`): `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
+> **askAIPool**\<`TResponse`\>(`requests`, `poolSize`, `options?`): `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
 
-Defined in: [askGeminiPool.ts:165](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askGeminiPool.ts#L165)
+Defined in: askAIPool.ts:51
 
-Processes multiple Gemini requests concurrently using a pool of workers. This function wraps [askGemini](#askgemini) and manages parallel execution, retries, progress logging, and error handling for batch operations.
+Processes AI requests concurrently with one pool for every provider.
 
-Each request in the array is processed by a worker from the pool. The pool size controls how many requests run simultaneously. Results and errors are returned separately, sorted by their original index, making it easy to match outputs back to inputs.
+Uses the same environment configuration, files, caching and response processing
+as `askAI`. Results and terminal errors retain each request's index and optional
+ID, and are returned in input order.
 
-**Caching**: model calls can be slow and costly, so original responses are
-cached in `.journalism-cache` by default. `processResponse` reruns on every
-call, including cache hits, and its output is never cached. Keep it lightweight
-and optimize heavier processing, especially for large workloads.
-Set `options.cache: false` on each request to disable its cache.
+`retry` is the number of additional attempts (default zero). It covers provider
+and response-processing failures; transport retries are disabled inside the
+pool. `retryCheck` can restrict retries. `minRequestDurationMs` sets a minimum
+duration for each worker attempt, including failures. Cache hits skip the
+request's `beforeRequest` hook. Configuration is captured before workers start.
 
 #### Type Parameters
 
@@ -286,297 +326,63 @@ Set `options.cache: false` on each request to disable its cache.
 
 `object`[]
 
-An array of request objects to process.
+Prompts with optional IDs and `askAI` options.
 
 ##### poolSize
 
 `number`
 
-The number of concurrent workers processing requests.
+Maximum concurrent requests; a positive integer.
 
-##### poolOptions?
+##### options?
 
-Configuration for the pool execution.
+Progress logging, retries and per-worker pacing.
 
 ###### logProgress?
 
 `boolean`
 
-If `true`, logs progress to the console after each completed or failed request. Defaults to `false`.
-
 ###### minRequestDurationMs?
 
 `number`
-
-A minimum duration in milliseconds for each request. If a request completes faster, the worker will wait before picking up the next one. Useful for rate limiting.
 
 ###### retry?
 
 `number`
 
-The maximum number of retry attempts for a failed request. Defaults to `0` (no retries).
-
 ###### retryCheck?
 
 (`error`) => `boolean` \| `Promise`\<`boolean`\>
-
-A function that receives the error and returns whether the request should be retried. If not provided, all failed requests are retried up to the `retry` limit.
 
 #### Returns
 
 `Promise`\<\{ `errors`: `object`[]; `results`: `object`[]; \}\>
 
-A Promise that resolves to an object with `results` (successful responses with their index and request) and `errors` (failed requests with their index, request, and error), both sorted by original index.
+Successful responses and terminal errors, each sorted by original index.
 
 #### Examples
 
 ```ts
-// Basic usage: Process a batch of prompts with a pool of 5 concurrent workers.
-const { results, errors } = await askGeminiPool(
-  [
-    { prompt: "What is the capital of France?" },
-    { prompt: "What is the capital of Germany?" },
-    { prompt: "What is the capital of Italy?" },
-  ],
-  5,
-);
-for (const r of results) {
-  console.log(r.result.response);
-}
+import { askAIPool } from "@nshiab/journalism-ai";
+// Configure AI_PROVIDER, AI_MODEL and the matching credentials first.
+const { results, errors } = await askAIPool([
+  { id: "france", prompt: "What is the capital of France?" },
+  { id: "germany", prompt: "What is the capital of Germany?" },
+], 5, { retry: 2 });
+for (const entry of results) console.log(entry.request.id, entry.result.response);
+console.log(`${errors.length} failed`);
 ```
 
 ```ts
-// Use an id to easily identify each request in the results.
-const { results, errors } = await askGeminiPool(
-  [
-    { id: "france", prompt: "What is the capital of France?" },
-    { id: "germany", prompt: "What is the capital of Germany?" },
-  ],
-  2,
-);
-for (const r of results) {
-  console.log(r.request.id, r.result.response);
-}
-```
-
-```ts
-// Enable progress logging and retries.
-const { results, errors } = await askGeminiPool(
-  [
-    { prompt: "Summarize this article.", options: { files: [{ path: "./article1.txt", type: "text" }], schemaJson: schema } },
-    { prompt: "Summarize this article.", options: { files: [{ path: "./article2.txt", type: "text" }], schemaJson: schema } },
-  ],
-  3,
-  {
-    logProgress: true,
-    retry: 2,
-  },
-);
-console.log(`${results.length} succeeded, ${errors.length} failed`);
-```
-
-```ts
-// Use retryCheck to only retry on specific errors.
-const { results, errors } = await askGeminiPool(
-  [
-    { prompt: "Analyze this image.", options: { files: [{ path: "./photo.jpg", type: "image" }], schemaJson: schema } },
-  ],
-  1,
-  {
-    retry: 3,
-    retryCheck: (error) => {
-      // Only retry on rate limit errors
-      return error instanceof Error && error.message.includes("429");
-    },
-  },
-);
-```
-
-```ts
-// Use schemaJson to enforce structured output with a specific schema.
-import * as z from "zod";
-
-const schema = z.toJSONSchema(
-  z.object({
-    people: z.array(z.object({
-      name: z.string(),
-      age: z.number(),
-      gender: z.enum(["man", "woman"]),
-    })),
-  }),
-);
-
-const { results, errors } = await askGeminiPool(
-  [
-    { prompt: "Give me 5 characters from Harry Potter.", options: { schemaJson: schema } },
-    { prompt: "Give me 5 characters from Lord of the Rings.", options: { schemaJson: schema } },
-  ],
-  2,
-);
-// Each result.response will conform to the specified schema
-for (const r of results) {
-  console.log(r.result.response); // { people: [{ name: "...", age: ..., gender: "..." }, ...] }
-}
-```
-
-***
-
-### askOllama()
-
-> **askOllama**\<`TResponse`\>(`prompt`, `options?`): `Promise`\<\{ `contextWindow`: `number` \| `null`; `durationMs`: `number`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `systemPrompt`: `string` \| `null`; `temperature`: `number`; `thinkingLevel`: `boolean` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; \}\>
-
-Defined in: [askOllama.ts:146](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/askOllama.ts#L146)
-
-Interacts with a local Ollama model to perform a wide range of tasks.
-
-Ollama must be running on the machine. Set the `AI_MODEL` environment
-variable or pass `model` directly.
-
-Pass a custom `Ollama` instance via the `ollama` option to target a
-non-default host.
-
-**File handling**: pass local files via `files: [{ path, type }]`. Only `"image"`
-and `"text"` types are supported for now.
-
-**Caching**: model calls can be slow and costly, so original responses are
-cached in `.journalism-cache` by default. `processResponse` reruns on every
-call, including cache hits, and its output is never cached. Keep it lightweight
-and optimize heavier processing, especially for large workloads.
-Set `cache: false` to disable caching.
-
-Temperature defaults to 0 for deterministic responses.
-
-#### Type Parameters
-
-##### TResponse
-
-`TResponse` = `unknown`
-
-#### Parameters
-
-##### prompt
-
-`string`
-
-The primary text prompt.
-
-##### options?
-
-###### cache?
-
-`boolean`
-
-Cache the model response before user processing, not the callback output. Defaults to true.
-
-###### contextWindow?
-
-`number`
-
-Override the model's context window size.
-
-###### files?
-
-`object`[]
-
-Files to send alongside the prompt. Only `"image"` and `"text"` types are supported (local paths only; no GCS, audio, video, or PDF). Text files are sent as separate user messages after the prompt; images are sent as attachments to the prompt message.
-
-###### model?
-
-`string`
-
-Model name; defaults to `AI_MODEL` env var.
-
-###### ollama?
-
-`unknown`
-
-Custom `Ollama` instance targeting a specific host.
-
-###### ollamaParameters?
-
-`Partial`\<`ChatRequest`\>
-
-Extra params merged into `client.chat`.
-
-###### processResponse?
-
-(`response`) => `TResponse` \| `Promise`\<`TResponse`\>
-
-Transform or validate the model response on every call, including cache hits. The callback output is never cached; rejected cached responses are removed.
-
-###### schemaJson?
-
-`unknown`
-
-JSON schema for structured output.
-
-###### systemPrompt?
-
-`string`
-
-Optional system prompt.
-
-###### temperature?
-
-`number`
-
-Sampling temperature (default 0).
-
-###### thinkingLevel?
-
-`boolean` \| `"low"` \| `"medium"` \| `"high"`
-
-Enables reasoning. Pass `true` for models that only support on/off, or `"low"`, `"medium"`, or `"high"` for granular control.
-
-#### Returns
-
-`Promise`\<\{ `contextWindow`: `number` \| `null`; `durationMs`: `number`; `files`: `object`[]; `fromCache`: `boolean`; `model`: `string`; `outputTokenCount`: `number`; `prompt`: `string`; `promptTokenCount`: `number`; `response`: `TResponse`; `systemPrompt`: `string` \| `null`; `temperature`: `number`; `thinkingLevel`: `boolean` \| `"low"` \| `"medium"` \| `"high"` \| `null`; `thoughts`: `string` \| `null`; `tokensPerSecond`: `number` \| `null`; `totalTokens`: `number`; \}\>
-
-#### Examples
-
-```ts
-// Assumes AI_MODEL is set in environment variables.
-const result = await askOllama("What is the capital of France?");
-console.log(result.response); // "Paris"
-```
-
-```ts
-// Use a custom Ollama instance.
-import { Ollama } from "ollama";
-const client = new Ollama({ host: "http://127.0.0.1:11434" });
-const result = await askOllama("What is the capital of France?", { ollama: client });
-```
-
-```ts
-// Analyse a local image.
-const result = await askOllama("Describe this image.", {
-  files: [{ path: "./photo.jpg", type: "image" }],
-});
-```
-
-```ts
-// Structured JSON output.
-import * as z from "zod";
-const schema = z.toJSONSchema(z.object({ country: z.string(), capital: z.string() }));
-const result = await askOllama(
-  "What is the capital of France?",
-  { schemaJson: schema },
-);
-```
-
-```ts
-// Enable thinking / reasoning.
-const result = await askOllama(
-  "What is 17 * 23?",
-  { thinkingLevel: "low" },
-);
-```
-
-```ts
-// Access token usage directly from the response.
-const result = await askOllama("What is the capital of France?");
-console.log(result.response); // "Paris"
-console.log(`${result.totalTokens} tokens in ${result.durationMs}ms`);
+import { askAIPool } from "@nshiab/journalism-ai";
+import { z } from "zod";
+const { results } = await askAIPool([
+  { prompt: "List three European countries.", options: {
+    schemaJson: z.toJSONSchema(z.array(z.string())),
+    processResponse: (value) => z.array(z.string()).parse(value),
+  } },
+], 2, { minRequestDurationMs: 1000 });
+console.log(results[0]?.result.response.join(", "));
 ```
 
 ***
@@ -585,33 +391,20 @@ console.log(`${result.totalTokens} tokens in ${result.durationMs}ms`);
 
 > **getEmbedding**(`text`, `options?`): `Promise`\<`number`[]\>
 
-Defined in: [getEmbedding.ts:103](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/getEmbedding.ts#L103)
+Defined in: [getEmbedding.ts:48](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/getEmbedding.ts#L48)
 
-Generates a numerical embedding (vector representation) for a given text string. Embeddings are crucial for various natural language processing (NLP) tasks, including semantic search, text classification, clustering, and anomaly detection, as they allow text to be processed and compared mathematically.
+Generates a numerical embedding for text, useful for semantic search and clustering.
 
-This function supports both Google's Gemini AI models and local models running with Ollama. It provides options for authentication, model selection, and caching to optimize performance and cost.
+Supports OpenAI, Gemini, Google Agent Platform and Ollama. Set
+`AI_EMBEDDINGS_MODEL` and `AI_PROVIDER`; `AI_EMBEDDINGS_PROVIDER` can select a
+different provider for embeddings. Cloud API keys use `AI_KEY`. Google Agent
+Platform also accepts application credentials with `AI_PROJECT`/`AI_LOCATION`.
+Ollama ignores `AI_KEY`. Anthropic does not provide native embeddings.
 
-**Authentication**:
-With no explicit provider, credentials, model information, and provider selection come from environment variables (`AI_KEY`, `AI_PROJECT`, `AI_LOCATION`, `AI_EMBEDDINGS_MODEL`, `AI_EMBEDDINGS_PROVIDER`). Providerless options intentionally contain only fields shared by every provider.
-
-**Local Models**:
-To use a local model with Ollama, pass `provider: "ollama"`, or set `AI_EMBEDDINGS_PROVIDER=ollama` (the legacy `OLLAMA` environment variable is also supported), and ensure Ollama is running. A custom `Ollama` client can be passed in the provider-specific `ollama` option.
-
-**Caching**:
-Responses are cached by default in a local `.journalism-cache` directory. If the same request is made again, the cached response will be returned, avoiding redundant API calls. Set `cache` to `false` to disable caching. Remember to add `.journalism-cache` to your `.gitignore` file.
-
-**Options:**
-- `provider`: Explicitly selects Gemini/Vertex or Ollama. When omitted, `AI_EMBEDDINGS_PROVIDER` is used, then the legacy `OLLAMA` fallback, then Gemini.
-- `model`: The specific embedding model to use (e.g., 'text-embedding-004'). Defaults to the `AI_EMBEDDINGS_MODEL` environment variable.
-- `apiKey`: Your Gemini API or Vertex Express Mode API key. Defaults to the `AI_KEY` environment variable.
-- `vertex`: If `true`, explicitly selects the Vertex AI backend for the Google provider.
-- `project`: Your Google Cloud project ID for Vertex AI. Defaults to the `AI_PROJECT` environment variable.
-- `location`: The Google Cloud location for your Vertex AI project. Defaults to the `AI_LOCATION` environment variable.
-- `cache`: If `true`, enables caching of the embedding response. Defaults to `true`.
-- `ollama`: A custom Ollama client. Boolean selection remains supported at runtime for compatibility but is deprecated; use `provider: "ollama"` instead.
-- `verbose`: If `true`, logs additional information such as execution time and the truncated input text. Defaults to `false`.
-- `contextWindow`: An option to specify the context window size for Ollama models. By default, Ollama sets this depending on the model, which can be lower than the actual maximum context window size of the model.
-- `beforeRequest`: Awaited immediately before each uncached provider dispatch, including when caching is disabled. Cache hits skip it. Throwing prevents dispatch and successful caching. Caller retries invoke it again; it is excluded from cache identity.
+Vectors are cached in `.journalism-cache` by default. Identity separates
+providers, deployments, models, dimensions and model-specific settings.
+`beforeRequest` runs only before uncached dispatches, including retries.
+`maxRetries` defaults to zero. Cache entries from older identities are ignored.
 
 #### Parameters
 
@@ -619,940 +412,243 @@ Responses are cached by default in a local `.journalism-cache` directory. If the
 
 `string`
 
-The input text string for which to generate the embedding.
+The text to embed.
 
 ##### options?
 
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex?`: `false`; \} \| \{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `string`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `string`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex`: `true`; \} \| \{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `number`; `location?`: `undefined`; `model?`: `string`; `ollama?`: \{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}; `project?`: `undefined`; `provider`: `"ollama"`; `verbose?`: `boolean`; `vertex?`: `undefined`; \} \| \{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider?`: `undefined`; `verbose?`: `boolean`; `vertex?`: `undefined`; \} = `{}`
+Provider, model, cache and request settings. `dimensions` is
+available for supporting cloud models; `contextWindow` is Ollama-only.
+`providerOptions` forwards non-secret AI SDK settings such as Google's task type.
 
-Configuration options for the embedding generation.
+###### abortSignal?
 
-###### Type Literal
-
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex?`: `false`; \}
-
-Configuration options for the embedding generation.
+`AbortSignal`
 
 ###### apiKey?
 
 `string`
 
-Gemini API key. Defaults to `AI_KEY`.
+###### baseURL?
+
+`string`
 
 ###### beforeRequest?
 
 () => `void` \| `Promise`\<`void`\>
 
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
 ###### cache?
 
 `boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Ollama context windows are not valid for the Gemini API.
-
-###### location?
-
-`undefined`
-
-Vertex locations are not valid for the Gemini API.
-
-###### model?
-
-`string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Ollama clients are not valid for the Gemini API.
-
-###### project?
-
-`undefined`
-
-Vertex projects are not valid for the Gemini API.
-
-###### provider
-
-`"gemini"`
-
-Explicitly selects the Google embedding provider.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex?
-
-`false`
-
-Keeps the request on the Gemini API rather than Vertex AI.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `string`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `string`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex`: `true`; \}
-
-Configuration options for the embedding generation.
-
-###### apiKey?
-
-`string`
-
-Vertex Express Mode API key.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Ollama context windows are not valid for Vertex AI.
-
-###### location?
-
-`string`
-
-Google Cloud location. Defaults to `AI_LOCATION`.
-
-###### model?
-
-`string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Ollama clients are not valid for Vertex AI.
-
-###### project?
-
-`string`
-
-Google Cloud project. Defaults to `AI_PROJECT`.
-
-###### provider
-
-`"gemini"`
-
-Explicitly selects the Google embedding provider.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex
-
-`true`
-
-Selects the Vertex AI backend.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `number`; `location?`: `undefined`; `model?`: `string`; `ollama?`: \{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}; `project?`: `undefined`; `provider`: `"ollama"`; `verbose?`: `boolean`; `vertex?`: `undefined`; \}
-
-Configuration options for the embedding generation.
-
-###### apiKey?
-
-`undefined`
-
-Gemini and Vertex API keys are not valid for Ollama.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
 
 ###### contextWindow?
 
 `number`
 
-The model context-window size sent to Ollama.
+###### dimensions?
+
+`number`
+
+###### fetch?
+
+\{(`input`, `init?`): `Promise`\<`Response`\>; (`input`, `init?`): `Promise`\<`Response`\>; \}
 
 ###### location?
 
-`undefined`
+`string`
 
-Vertex locations are not valid for Ollama.
+###### maxRetries?
+
+`number`
 
 ###### model?
 
 `string`
 
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-\{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}
-
-A custom Ollama client.
-
-###### ollama.embeddingEndpoint?
-
-`string`
-
-Non-secret deployment endpoint for custom adapters that are not instances
-of the Ollama SDK client.
-
-###### ollama.embed
-
-(`request`) => `Promise`\<\{ `embeddings`: `number`[][]; \}\>
-
-Sends an embedding request to Ollama.
-
 ###### project?
 
-`undefined`
-
-Vertex projects are not valid for Ollama.
-
-###### provider
-
-`"ollama"`
-
-Explicitly selects Ollama.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex?
-
-`undefined`
-
-Vertex selection is not valid for Ollama.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider?`: `undefined`; `verbose?`: `boolean`; `vertex?`: `undefined`; \}
-
-Configuration options for the embedding generation.
-
-###### apiKey?
-
-`undefined`
-
-Direct credentials require an explicit provider.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Provider-specific semantic options require an explicit provider.
-
-###### location?
-
-`undefined`
-
-Direct deployment selection requires an explicit provider.
-
-###### model?
-
 `string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Custom clients require an explicit provider.
-
-###### project?
-
-`undefined`
-
-Direct deployment selection requires an explicit provider.
 
 ###### provider?
 
-`undefined`
+`"openai"` \| `"gemini"` \| `"google-agent-platform"` \| `"ollama"`
 
-Omit the discriminator to select the provider from the environment.
+###### providerOptions?
+
+\{\[`provider`: `string`\]: `object`; \}
 
 ###### verbose?
 
 `boolean`
-
-Whether to log request and timing information.
-
-###### vertex?
-
-`undefined`
-
-Direct backend selection requires an explicit provider.
 
 #### Returns
 
 `Promise`\<`number`[]\>
 
-A promise that resolves to an array of numbers representing the generated embedding.
+A non-empty vector of finite numbers.
 
 #### Examples
 
 ```ts
-// Environment-selected usage. Configure AI_EMBEDDINGS_PROVIDER,
-// AI_EMBEDDINGS_MODEL, and the matching credentials first.
-const embedding = await getEmbedding("The quick brown fox jumps over the lazy dog.");
-console.log(embedding); // [0.012, -0.034, ..., 0.056] (example output)
+import { getEmbedding } from "@nshiab/journalism-ai";
+// Configure AI_PROVIDER, AI_KEY and AI_EMBEDDINGS_MODEL first.
+const vector = await getEmbedding("Local reporting matters.");
+console.log(vector.length);
 ```
 
 ```ts
-// Embeddings are cached by default.
-const cachedEmbedding = await getEmbedding("Artificial intelligence is transforming industries.");
-console.log(cachedEmbedding);
-```
-
-```ts
-// Generate an embedding using a specific model and API key.
-const customEmbedding = await getEmbedding("Machine learning is a subset of AI.", {
-  provider: "gemini",
-  model: "another-embedding-model",
-  apiKey: "your_custom_api_key"
-});
-console.log(customEmbedding);
-```
-
-```ts
-// Explicit Vertex AI usage.
-const vertexEmbedding = await getEmbedding("Local reporting matters.", {
-  provider: "gemini",
-  vertex: true,
-  model: "text-embedding-004",
-  project: "your-project",
-  location: "northamerica-northeast1",
-});
-```
-
-```ts
-// Explicit Ollama usage.
-const ollamaEmbedding = await getEmbedding("Local reporting matters.", {
-  provider: "ollama",
-  model: "nomic-embed-text",
-  contextWindow: 8192,
-});
-```
-
-```ts
-// Generate an embedding with verbose logging.
-const verboseEmbedding = await getEmbedding("The quick brown fox jumps over the lazy dog.", { verbose: true });
-console.log(verboseEmbedding);
-```
-
-```ts
-// Apply pacing only when the response is not cached.
-const embedding = await getEmbedding("Local reporting matters.", {
-  provider: "ollama",
-  model: "nomic-embed-text",
+import { getEmbedding } from "@nshiab/journalism-ai";
+const vector = await getEmbedding("Local reporting matters.", {
+  provider: "ollama", model: "nomic-embed-text", contextWindow: 8192,
   beforeRequest: async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
   },
 });
+console.log(vector);
 ```
 
 ***
 
 ### getEmbeddingIdentity()
 
-> **getEmbeddingIdentity**(`options?`, `environment?`): \{ `backend`: `"gemini-api"`; `model`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"vertex"`; `location?`: `string`; `model`: `string`; `project?`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \} \| \{ `backend`: `"ollama"`; `contextWindow?`: `number`; `endpoint`: `string`; `model`: `string`; `provider`: `"ollama"`; `schemaVersion`: `2`; \}
+> **getEmbeddingIdentity**(`options?`, `environment?`): `object`
 
-Defined in: [embeddingOptions.ts:379](https://github.com/nshiab/journalism-ai/blob/v3.0.7/src/ai/embeddingOptions.ts#L379)
+Defined in: getEmbeddingIdentity.ts:26
 
-Returns the canonical, non-secret identity for an embedding request.
-Downstream persisted data can compare this value to decide whether vectors
-are compatible with the current request.
+Returns the non-secret identity that determines embedding compatibility.
+
+Uses the same provider, deployment, model and semantic settings as
+`getEmbedding`. Credentials, cache controls, logging and callbacks are excluded.
+Compare this identity before reusing persisted vectors; changing models or
+dimensions requires re-embedding the data. Older identity versions are incompatible.
 
 #### Parameters
 
 ##### options?
 
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex?`: `false`; \} \| \{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `string`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `string`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex`: `true`; \} \| \{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `number`; `location?`: `undefined`; `model?`: `string`; `ollama?`: \{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}; `project?`: `undefined`; `provider`: `"ollama"`; `verbose?`: `boolean`; `vertex?`: `undefined`; \} \| \{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider?`: `undefined`; `verbose?`: `boolean`; `vertex?`: `undefined`; \} = `{}`
+The same configuration used for the embedding request.
 
-Provider-aware embedding options.
+###### abortSignal?
 
-###### Type Literal
-
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex?`: `false`; \}
-
-Provider-aware embedding options.
+`AbortSignal`
 
 ###### apiKey?
 
 `string`
 
-Gemini API key. Defaults to `AI_KEY`.
+###### baseURL?
+
+`string`
 
 ###### beforeRequest?
 
 () => `void` \| `Promise`\<`void`\>
 
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
 ###### cache?
 
 `boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Ollama context windows are not valid for the Gemini API.
-
-###### location?
-
-`undefined`
-
-Vertex locations are not valid for the Gemini API.
-
-###### model?
-
-`string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Ollama clients are not valid for the Gemini API.
-
-###### project?
-
-`undefined`
-
-Vertex projects are not valid for the Gemini API.
-
-###### provider
-
-`"gemini"`
-
-Explicitly selects the Google embedding provider.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex?
-
-`false`
-
-Keeps the request on the Gemini API rather than Vertex AI.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `string`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `string`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `string`; `provider`: `"gemini"`; `verbose?`: `boolean`; `vertex`: `true`; \}
-
-Provider-aware embedding options.
-
-###### apiKey?
-
-`string`
-
-Vertex Express Mode API key.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Ollama context windows are not valid for Vertex AI.
-
-###### location?
-
-`string`
-
-Google Cloud location. Defaults to `AI_LOCATION`.
-
-###### model?
-
-`string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Ollama clients are not valid for Vertex AI.
-
-###### project?
-
-`string`
-
-Google Cloud project. Defaults to `AI_PROJECT`.
-
-###### provider
-
-`"gemini"`
-
-Explicitly selects the Google embedding provider.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex
-
-`true`
-
-Selects the Vertex AI backend.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `number`; `location?`: `undefined`; `model?`: `string`; `ollama?`: \{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}; `project?`: `undefined`; `provider`: `"ollama"`; `verbose?`: `boolean`; `vertex?`: `undefined`; \}
-
-Provider-aware embedding options.
-
-###### apiKey?
-
-`undefined`
-
-Gemini and Vertex API keys are not valid for Ollama.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
 
 ###### contextWindow?
 
 `number`
 
-The model context-window size sent to Ollama.
+###### dimensions?
+
+`number`
+
+###### fetch?
+
+\{(`input`, `init?`): `Promise`\<`Response`\>; (`input`, `init?`): `Promise`\<`Response`\>; \}
 
 ###### location?
 
-`undefined`
+`string`
 
-Vertex locations are not valid for Ollama.
+###### maxRetries?
+
+`number`
 
 ###### model?
 
 `string`
 
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-\{ `embeddingEndpoint?`: `string`; `embed`(`request`): `Promise`\<\{ `embeddings`: `number`[][]; \}\>; \}
-
-A custom Ollama client.
-
-###### ollama.embeddingEndpoint?
-
-`string`
-
-Non-secret deployment endpoint for custom adapters that are not instances
-of the Ollama SDK client.
-
-###### ollama.embed
-
-(`request`) => `Promise`\<\{ `embeddings`: `number`[][]; \}\>
-
-Sends an embedding request to Ollama.
-
 ###### project?
 
-`undefined`
-
-Vertex projects are not valid for Ollama.
-
-###### provider
-
-`"ollama"`
-
-Explicitly selects Ollama.
-
-###### verbose?
-
-`boolean`
-
-Whether to log request and timing information.
-
-###### vertex?
-
-`undefined`
-
-Vertex selection is not valid for Ollama.
-
-***
-
-###### Type Literal
-
-\{ `apiKey?`: `undefined`; `beforeRequest?`: () => `void` \| `Promise`\<`void`\>; `cache?`: `boolean`; `contextWindow?`: `undefined`; `location?`: `undefined`; `model?`: `string`; `ollama?`: `undefined`; `project?`: `undefined`; `provider?`: `undefined`; `verbose?`: `boolean`; `vertex?`: `undefined`; \}
-
-Provider-aware embedding options.
-
-###### apiKey?
-
-`undefined`
-
-Direct credentials require an explicit provider.
-
-###### beforeRequest?
-
-() => `void` \| `Promise`\<`void`\>
-
-Awaits caller-controlled pacing immediately before an uncached provider
-request. Cache hits skip this hook. Throwing prevents dispatch and caching.
-The hook is excluded from embedding identity and cache keys.
-
-**Example**
-
-```ts
-const options = {
-  beforeRequest: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  },
-};
-```
-
-###### cache?
-
-`boolean`
-
-Whether to persist and reuse the embedding response. Defaults to `true`.
-
-###### contextWindow?
-
-`undefined`
-
-Provider-specific semantic options require an explicit provider.
-
-###### location?
-
-`undefined`
-
-Direct deployment selection requires an explicit provider.
-
-###### model?
-
 `string`
-
-The embedding model. Defaults to `AI_EMBEDDINGS_MODEL`.
-
-###### ollama?
-
-`undefined`
-
-Custom clients require an explicit provider.
-
-###### project?
-
-`undefined`
-
-Direct deployment selection requires an explicit provider.
 
 ###### provider?
 
-`undefined`
+`"openai"` \| `"gemini"` \| `"google-agent-platform"` \| `"ollama"`
 
-Omit the discriminator to select the provider from the environment.
+###### providerOptions?
+
+\{\[`provider`: `string`\]: `object`; \}
 
 ###### verbose?
 
 `boolean`
 
-Whether to log request and timing information.
-
-###### vertex?
-
-`undefined`
-
-Direct backend selection requires an explicit provider.
-
 ##### environment?
 
-\{\[`key`: `string`\]: `string` \| `undefined`; \}
+`Record`\<`string`, `string` \| `undefined`\> = `process.env`
 
-Environment used to resolve omitted values.
+Environment defaults; uses `process.env` when omitted.
 
 #### Returns
 
-The canonical identity used by embedding caches.
+`object`
 
-##### Type Literal
+The canonical identity used for embedding caches and persisted data.
 
-\{ `backend`: `"gemini-api"`; `model`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \}
+##### authentication
 
-###### backend
+> **authentication**: `"api-key"` \| `"adc"` \| `"none"`
 
-> **backend**: `"gemini-api"`
-
-Resolved Gemini API backend.
-
-###### model
-
-> **model**: `string`
-
-Resolved embedding model.
-
-###### provider
-
-> **provider**: `"gemini"`
-
-Resolved provider.
-
-###### schemaVersion
-
-> **schemaVersion**: `2`
-
-Cache-compatibility schema for the canonical identity.
-
-***
-
-##### Type Literal
-
-\{ `backend`: `"vertex"`; `location?`: `string`; `model`: `string`; `project?`: `string`; `provider`: `"gemini"`; `schemaVersion`: `2`; \}
-
-###### backend
-
-> **backend**: `"vertex"`
-
-Resolved Vertex AI backend.
-
-###### location?
-
-> `optional` **location?**: `string`
-
-Resolved Google Cloud location, when configured.
-
-###### model
-
-> **model**: `string`
-
-Resolved embedding model.
-
-###### project?
-
-> `optional` **project?**: `string`
-
-Resolved Google Cloud project, when configured.
-
-###### provider
-
-> **provider**: `"gemini"`
-
-Resolved provider.
-
-###### schemaVersion
-
-> **schemaVersion**: `2`
-
-Cache-compatibility schema for the canonical identity.
-
-***
-
-##### Type Literal
-
-\{ `backend`: `"ollama"`; `contextWindow?`: `number`; `endpoint`: `string`; `model`: `string`; `provider`: `"ollama"`; `schemaVersion`: `2`; \}
-
-###### backend
-
-> **backend**: `"ollama"`
-
-Resolved Ollama backend.
-
-###### contextWindow?
+##### contextWindow?
 
 > `optional` **contextWindow?**: `number`
 
-Context-window size when explicitly configured.
+##### dimensions?
 
-###### endpoint
+> `optional` **dimensions?**: `number`
+
+##### endpoint
 
 > **endpoint**: `string`
 
-Non-secret Ollama endpoint identity.
+##### location?
 
-###### model
+> `optional` **location?**: `string`
+
+##### model
 
 > **model**: `string`
 
-Resolved embedding model.
+##### project?
 
-###### provider
+> `optional` **project?**: `string`
 
-> **provider**: `"ollama"`
+##### provider
 
-Resolved provider.
+> **provider**: `"openai"` \| `"gemini"` \| `"google-agent-platform"` \| `"ollama"`
 
-###### schemaVersion
+##### providerOptions
 
-> **schemaVersion**: `2`
+> **providerOptions**: `object`
 
-Cache-compatibility schema for the canonical identity.
+###### Index Signature
+
+\[`provider`: `string`\]: `object`
+
+##### schemaVersion
+
+> **schemaVersion**: `3`
 
 #### Example
 
 ```ts
+import { getEmbeddingIdentity } from "@nshiab/journalism-ai";
 const identity = getEmbeddingIdentity({
-  provider: "ollama",
-  model: "nomic-embed-text",
-  contextWindow: 8192,
+  provider: "ollama", model: "nomic-embed-text", contextWindow: 8192,
 });
+console.log(identity);
 ```
