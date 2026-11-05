@@ -206,6 +206,24 @@ with compatibility coverage. No Simple Data Analysis source was modified.
 
 ## Reproduction inputs and checks
 
+### v4 implementation follow-up (November 5)
+
+The v4 preparation removes native generation functions and `@google/genai`, adds
+`askAIPool`, and migrates cloud embeddings to the Vercel adapters. Generation now
+requires explicit `AI_PROVIDER`; built-in credentials use `AI_KEY` and model
+defaults use `AI_MODEL`. The provider adapters are loaded only when selected.
+
+The final locked production install is **42 packages / 38.91 MiB**. The npm
+archive is **46.6 KiB compressed**. The package count includes the small
+`@types/json-schema` dependency needed by the SDK's exported model declarations
+when consumers disable `skipLibCheck`. A packed consumer passes strict type
+checking and mocked generation, structured output, pooling and embeddings.
+See [v4 measurements](./provider-v4-size.json).
+
+This replaces the additive implementation above; package versioning and
+publication remain a separate release step. The public migration guide records
+removed functions, configuration changes and embedding cache invalidation.
+
 Pinned versions:
 
 | Package                 | Version |

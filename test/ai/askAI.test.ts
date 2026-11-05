@@ -6,8 +6,8 @@ import { z } from "zod";
 import { askAI } from "../../src/index.ts";
 
 type Options = NonNullable<Parameters<typeof askAI>[1]>;
-type Provider = NonNullable<Options["provider"]>;
-const providers: Provider[] = ["openai", "anthropic", "gemini", "vertex", "ollama"];
+type Provider = "openai" | "anthropic" | "gemini" | "google-agent-platform" | "ollama";
+const providers: Provider[] = ["openai", "anthropic", "gemini", "google-agent-platform", "ollama"];
 
 beforeEach(() => {
   vi.stubGlobal("AI_SDK_LOG_WARNINGS", false);
@@ -119,12 +119,14 @@ function transport(provider: Provider, text = "Paris", finish = "stop") {
 }
 
 function options(provider: Provider): Options {
+  vi.stubEnv("AI_PROVIDER", provider);
   return {
-    provider,
     model: "test-model",
     maxOutputTokens: 256,
     ...(provider === "ollama" ? {} : { apiKey: "test-secret" }),
-    ...(provider === "vertex" ? { project: "project-a", location: "us-central1" } : {}),
+    ...(provider === "google-agent-platform"
+      ? { project: "project-a", location: "us-central1" }
+      : {}),
   };
 }
 
@@ -152,7 +154,7 @@ for (const provider of providers) {
     expect(second).toMatchObject({ response: "PARIS", fromCache: true });
     expect(mock.requests).toHaveLength(1);
     expect(mock.requests[0]?.url).toContain(
-      provider === "vertex"
+      provider === "google-agent-platform"
         ? "aiplatform.googleapis.com"
         : provider === "ollama"
           ? "11434/api/chat"
@@ -189,98 +191,50 @@ for (const provider of providers) {
   });
 }
 
-test("explicit providers beat ambient Google configuration and use their own credentials", async () => {
-  vi.stubEnv("AI_PROVIDER", "gemini");
-  vi.stubEnv("AI_PROJECT", "google-project");
-  vi.stubEnv("AI_LOCATION", "global");
-  vi.stubEnv("AI_KEY", "google-secret");
-  vi.stubEnv("OPENAI_API_KEY", "openai-secret");
-  const mock = transport("openai");
-  await askAI("explicit", { provider: "openai", model: "test-model", fetch: mock.fetch });
-  expect(mock.requests[0]?.headers.get("authorization")).toBe("Bearer openai-secret");
-  expect(mock.requests[0]?.url).toContain("api.openai.com");
-});
-
-test("environment provider/model selection and legacy Vertex selector work", async () => {
-  vi.stubEnv("AI_PROVIDER", "anthropic");
-  vi.stubEnv("ANTHROPIC_API_KEY", "anthropic-secret");
-  vi.stubEnv("ANTHROPIC_MODEL", "test-model");
-  const anthropic = transport("anthropic");
-  expect(
-    (await askAI("environment", { fetch: anthropic.fetch, maxOutputTokens: 256 })).provider,
-  ).toBe("anthropic");
-  const vertex = transport("vertex");
-  expect(
-    (
-      await askAI("vertex alias", {
-        ...options("vertex"),
-        provider: "gemini",
-        vertex: true,
-        fetch: vertex.fetch,
-      })
-    ).provider,
-  ).toBe("vertex");
-});
-
-test("explicit Google backend selection wins over environment defaults", async () => {
+test("AI_PROVIDER selects the provider and AI_KEY supplies its credentials", async () => {
   vi.stubEnv("AI_PROVIDER", "openai");
-  vi.stubEnv("AI_PROJECT", "ambient-project");
-  vi.stubEnv("AI_LOCATION", "global");
-  const gemini = transport("gemini");
-  expect(
-    (
-      await askAI("force Gemini", {
-        model: "test-model",
-        apiKey: "gemini-key",
-        vertex: false,
-        fetch: gemini.fetch,
-      })
-    ).provider,
-  ).toBe("gemini");
-  const vertex = transport("vertex");
-  expect(
-    (
-      await askAI("force Vertex", {
-        model: "test-model",
-        apiKey: "vertex-key",
-        vertex: true,
-        fetch: vertex.fetch,
-      })
-    ).provider,
-  ).toBe("vertex");
-  vi.stubEnv("AI_PROVIDER", undefined);
-  expect(
-    (
-      await askAI("explicit Gemini key", {
-        model: "test-model",
-        apiKey: "gemini-key",
-        fetch: gemini.fetch,
-      })
-    ).provider,
-  ).toBe("gemini");
-  expect(gemini.requests).toHaveLength(2);
+  vi.stubEnv("AI_MODEL", "test-model");
+  vi.stubEnv("AI_KEY", "shared-secret");
+  vi.stubEnv("AI_PROJECT", "unrelated-project");
+  const mock = transport("openai");
+  const result = await askAI("environment", { fetch: mock.fetch });
+  expect(result.provider).toBe("openai");
+  expect(mock.requests[0]?.headers.get("authorization")).toBe("Bearer shared-secret");
 });
 
-test("invalid provider, mismatched deployment options, missing model and missing credentials fail before dispatch", async () => {
+test("missing or invalid explicit configuration fails without credential detection", async () => {
   const mock = transport("openai");
-  vi.stubEnv("AI_PROVIDER", "invalid");
-  await expect(askAI("invalid", { model: "test-model", fetch: mock.fetch })).rejects.toThrow(
-    "Unsupported AI provider",
+  vi.stubEnv("OPENAI_API_KEY", "old-openai-key");
+  vi.stubEnv("AI_KEY", "shared-key");
+  await expect(
+    askAI("missing provider", { model: "test-model", fetch: mock.fetch }),
+  ).rejects.toThrow("AI_PROVIDER");
+  vi.stubEnv("AI_PROVIDER", "vertex");
+  await expect(askAI("old provider", { model: "test-model", fetch: mock.fetch })).rejects.toThrow(
+    "AI_PROVIDER",
+  );
+  vi.stubEnv("AI_PROVIDER", "openai");
+  await expect(askAI("missing model", { fetch: mock.fetch })).rejects.toThrow("AI_MODEL");
+  vi.stubEnv("AI_KEY", undefined);
+  await expect(askAI("missing key", { model: "test-model", fetch: mock.fetch })).rejects.toThrow(
+    "AI_KEY",
   );
   await expect(
-    askAI("invalid", { ...options("openai"), vertex: true, fetch: mock.fetch }),
-  ).rejects.toThrow("vertex is only valid");
-  await expect(
-    askAI("invalid", { ...options("openai"), project: "wrong", fetch: mock.fetch }),
-  ).rejects.toThrow("require the Vertex");
-  await expect(
-    askAI("missing model", { provider: "openai", apiKey: "key", fetch: mock.fetch }),
-  ).rejects.toThrow("Model not specified");
-  vi.stubEnv("AI_KEY", "google-only");
-  await expect(
-    askAI("missing key", { provider: "openai", model: "test-model", fetch: mock.fetch }),
-  ).rejects.toThrow("OPENAI_API_KEY");
+    askAI("wrong options", { ...options("openai"), project: "wrong", fetch: mock.fetch }),
+  ).rejects.toThrow("google-agent-platform");
   expect(mock.requests).toEqual([]);
+});
+
+test("Ollama ignores AI_KEY and never infers selection from legacy flags", async () => {
+  vi.stubEnv("AI_KEY", "irrelevant-key");
+  vi.stubEnv("AI_PROVIDER", "ollama");
+  vi.stubEnv("AI_MODEL", "test-model");
+  const mock = transport("ollama");
+  await askAI("local", { apiKey: "also-ignored", fetch: mock.fetch });
+  expect(mock.requests).toHaveLength(1);
+  vi.stubEnv("AI_PROVIDER", undefined);
+  vi.stubEnv("OLLAMA", "true");
+  await expect(askAI("legacy", { fetch: mock.fetch })).rejects.toThrow("AI_PROVIDER");
 });
 
 test("cache separates providers, models, endpoints and semantic settings but excludes credentials and retry controls", async () => {
@@ -399,7 +353,7 @@ test("unsupported files and secret-bearing endpoints reject before network dispa
       fetch: mock.fetch,
       files: [{ path: "gs://bucket/a.pdf", type: "pdf" }],
     }),
-  ).rejects.toThrow("require the Vertex");
+  ).rejects.toThrow("require google-agent-platform");
   for (const baseURL of [
     "https://user:password@example.com",
     "https://example.com?key=secret",
@@ -412,9 +366,9 @@ test("unsupported files and secret-bearing endpoints reject before network dispa
 });
 
 test("Vertex forwards GCS inputs, Google settings and native search", async () => {
-  const mock = transport("vertex");
+  const mock = transport("google-agent-platform");
   await askAI("Vertex inputs", {
-    ...options("vertex"),
+    ...options("google-agent-platform"),
     model: "gemini-3.5-flash",
     fetch: mock.fetch,
     webSearch: true,
@@ -460,6 +414,7 @@ test("Ollama retains context, thinking, token limit and official-client options"
 });
 
 test("custom adapters use the same pipeline without a built-in provider registration", async () => {
+  vi.stubEnv("AI_PROVIDER", "custom-deployment");
   const mock = transport("openai");
   const model = createOpenAI({
     apiKey: "custom-secret",
@@ -473,7 +428,7 @@ test("custom adapters use the same pipeline without a built-in provider registra
   expect((await askAI("custom", { ...base, cacheKey: "different-deployment" })).fromCache).toBe(
     false,
   );
-  await expect(askAI("custom", { ...base, provider: "openai" })).rejects.toThrow(
+  await expect(askAI("custom", { ...base, apiKey: "forbidden" })).rejects.toThrow(
     "custom model adapter",
   );
   expect(mock.requests).toHaveLength(2);
@@ -550,6 +505,7 @@ test("aborted requests do not dispatch or cache responses", async () => {
 });
 
 test("custom provider usage, thoughts, warnings and citations survive caching", async () => {
+  vi.stubEnv("AI_PROVIDER", "another-vendor");
   let requests = 0;
   const model: Extract<LanguageModel, { specificationVersion: "v4" }> = {
     specificationVersion: "v4",
@@ -627,74 +583,47 @@ test("refusals with no text and invalid schemas cannot become successful cache e
   expect(readdirSync(".journalism-cache")).toEqual([]);
 });
 
-const liveConfigurations: {
-  provider: Provider;
-  model?: string;
-  apiKey?: string;
-  project?: string;
-  location?: string;
-  baseURL?: string;
-  configured: boolean;
-}[] = [
-  {
-    provider: "openai",
-    model: process.env.OPENAI_MODEL,
-    apiKey: process.env.OPENAI_API_KEY,
-    configured: Boolean(process.env.OPENAI_MODEL && process.env.OPENAI_API_KEY),
-  },
-  {
-    provider: "anthropic",
-    model: process.env.ANTHROPIC_MODEL,
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    configured: Boolean(process.env.ANTHROPIC_MODEL && process.env.ANTHROPIC_API_KEY),
-  },
-  {
-    provider: "gemini",
-    model: process.env.GEMINI_MODEL ?? process.env.AI_MODEL,
-    apiKey:
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY ?? process.env.GEMINI_API_KEY ?? process.env.AI_KEY,
-    configured: Boolean(
-      (process.env.GEMINI_MODEL ?? process.env.AI_MODEL) &&
-      (process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
-        process.env.GEMINI_API_KEY ??
-        process.env.AI_KEY),
-    ),
-  },
-  {
-    provider: "vertex",
-    model: process.env.VERTEX_MODEL ?? process.env.AI_MODEL,
-    apiKey: process.env.GOOGLE_VERTEX_API_KEY,
-    project: process.env.AI_PROJECT ?? process.env.GOOGLE_VERTEX_PROJECT,
-    location: process.env.AI_LOCATION ?? process.env.GOOGLE_VERTEX_LOCATION,
-    configured: Boolean(
-      (process.env.VERTEX_MODEL ?? process.env.AI_MODEL) &&
-      (process.env.GOOGLE_VERTEX_API_KEY ||
-        process.env.AI_PROJECT ||
-        process.env.GOOGLE_VERTEX_PROJECT),
-    ),
-  },
-  {
-    provider: "ollama",
-    model: process.env.OLLAMA_MODEL ?? process.env.AI_MODEL,
-    baseURL: process.env.OLLAMA_HOST,
-    configured: Boolean(
-      (process.env.OLLAMA_MODEL ?? process.env.AI_MODEL) &&
-      (process.env.OLLAMA_MODEL || process.env.OLLAMA === "true"),
-    ),
-  },
-];
-
-for (const { configured, ...settings } of liveConfigurations) {
-  test.skipIf(process.env.CI === "true" || !configured)(
-    `live ${settings.provider} generation`,
-    async () => {
-      const result = await askAI("Reply with the word ready.", {
-        ...settings,
-        cache: false,
-        maxOutputTokens: 1024,
-      });
-      expect(z.string().parse(result.response).trim().length).toBeGreaterThan(0);
-      expect(result.fromCache).toBe(false);
-    },
-  );
+const liveProvider = process.env.AI_PROVIDER;
+const liveModel = process.env.AI_MODEL;
+const liveKey = process.env.AI_KEY;
+const liveProject = process.env.AI_PROJECT;
+const liveLocation = process.env.AI_LOCATION;
+const liveHost = process.env.OLLAMA_HOST;
+for (const provider of providers) {
+  const configured =
+    liveProvider === provider &&
+    Boolean(liveModel) &&
+    (provider === "ollama" ||
+      Boolean(liveKey) ||
+      (provider === "google-agent-platform" && Boolean(liveProject)));
+  for (const structured of [false, true]) {
+    test.skipIf(process.env.CI === "true" || !configured)(
+      `live ${provider} ${structured ? "structured" : "text"} generation`,
+      async () => {
+        vi.stubEnv("AI_PROVIDER", provider);
+        const result = await askAI(
+          structured ? "Return the capital of France." : "Reply with the word ready.",
+          {
+            model: liveModel,
+            apiKey: liveKey,
+            ...(provider === "google-agent-platform"
+              ? { project: liveProject, location: liveLocation }
+              : {}),
+            ...(provider === "ollama" ? { baseURL: liveHost } : {}),
+            cache: false,
+            maxOutputTokens: 1024,
+            ...(structured
+              ? { schemaJson: z.toJSONSchema(z.object({ capital: z.string() })) }
+              : {}),
+          },
+        );
+        if (structured)
+          expect(
+            z.object({ capital: z.string() }).parse(result.response).capital.length,
+          ).toBeGreaterThan(0);
+        else expect(z.string().parse(result.response).trim().length).toBeGreaterThan(0);
+        expect(result.fromCache).toBe(false);
+      },
+    );
+  }
 }

@@ -6,8 +6,6 @@
 
 ## API
 - [askAI](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/askAI.md): askAI function
-- [askGemini](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/askGemini.md): askGemini function
-- [askGeminiPool](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/askGeminiPool.md): askGeminiPool function
-- [askOllama](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/askOllama.md): askOllama function
+- [askAIPool](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/askAIPool.md): askAIPool function
 - [getEmbedding](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/getEmbedding.md): getEmbedding function
 - [getEmbeddingIdentity](https://raw.githubusercontent.com/nshiab/journalism-ai/v3.0.7/docs/functions/getEmbeddingIdentity.md): getEmbeddingIdentity function

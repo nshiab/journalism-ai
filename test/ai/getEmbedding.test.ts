@@ -1,228 +1,138 @@
-import type {
-  GeminiEmbeddingOptions,
-  VertexEmbeddingOptions,
-  GetEmbeddingOptions,
-} from "../../src/ai/embeddingOptions.ts";
-import { test, describe } from "vite-plus/test";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { deepStrictEqual as assertEquals } from "node:assert/strict";
+import { beforeEach, afterEach, test, expect, vi } from "vite-plus/test";
+import { rmSync, readdirSync, readFileSync } from "node:fs";
 import { getEmbedding } from "../../src/index.ts";
-import { existsSync, rmSync } from "node:fs";
-import { Ollama } from "ollama";
+import { embeddingTransport } from "./helpers/embeddingTransport.ts";
 
-function inTemporaryDirectory(run: (temporaryDirectory: string) => Promise<void>): Promise<void> {
-  const originalDirectory = process.cwd();
-  const temporaryDirectory = mkdtempSync(join(tmpdir(), "journalism-ai-"));
-  process.chdir(temporaryDirectory);
-
-  return run(temporaryDirectory).finally(() => {
-    process.chdir(originalDirectory);
-    rmSync(temporaryDirectory, { recursive: true });
-  });
-}
-
-test("caches embeddings by default and supports opting out", async () => {
-  await inTemporaryDirectory(async (temporaryDirectory) => {
-    let requests = 0;
-    const client = {
-      embeddingEndpoint: "http://test-ollama.example:11434",
-      embed: () => {
-        requests++;
-        return Promise.resolve({ embeddings: [[requests]] });
-      },
-    };
-    const options: GetEmbeddingOptions = {
-      provider: "ollama",
-      model: "test-model",
-      ollama: client,
-    };
-
-    const first = await getEmbedding("default cache", options);
-    const second = await getEmbedding("default cache", options);
-    const uncachedFirst = await getEmbedding("disabled cache", {
-      ...options,
-      cache: false,
-    });
-    const uncachedSecond = await getEmbedding("disabled cache", {
-      ...options,
-      cache: false,
-    });
-
-    assertEquals(first, [1]);
-    assertEquals(second, [1]);
-    assertEquals(uncachedFirst, [2]);
-    assertEquals(uncachedSecond, [3]);
-    assertEquals(requests, 3);
-    assertEquals(existsSync(`${temporaryDirectory}/.journalism-cache`), true);
-  });
+type Provider = NonNullable<NonNullable<Parameters<typeof getEmbedding>[1]>["provider"]>;
+const providers: Provider[] = ["openai", "gemini", "google-agent-platform", "ollama"];
+beforeEach(() => {
+  for (const name of [
+    "AI_PROVIDER",
+    "AI_EMBEDDINGS_PROVIDER",
+    "AI_EMBEDDINGS_MODEL",
+    "AI_KEY",
+    "AI_PROJECT",
+    "AI_LOCATION",
+    "OLLAMA_HOST",
+  ])
+    vi.stubEnv(name, undefined);
+  rmSync(".journalism-cache", { recursive: true, force: true });
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-const aiKey = process.env.AI_KEY;
-const aiProject = process.env.AI_PROJECT;
-const aiLocation = process.env.AI_LOCATION;
-const embeddingModel = process.env.AI_EMBEDDINGS_MODEL;
-const embeddingsProvider = process.env.AI_EMBEDDINGS_PROVIDER;
-const legacyOllama = process.env.OLLAMA;
-const hasGeminiApiCredentials = Boolean(aiKey);
-const hasVertexCredentials = Boolean(aiProject) && Boolean(aiLocation);
-const hasGoogleCredentials = hasGeminiApiCredentials || hasVertexCredentials;
-const hasEmbeddingModel = Boolean(embeddingModel);
-const hasOllama = embeddingsProvider === "ollama" || Boolean(legacyOllama);
-const environmentProvider = embeddingsProvider ?? (legacyOllama ? "ollama" : "gemini");
-
-function registerGoogleIntegrationTests(
-  backend: string,
-  googleOptions: GeminiEmbeddingOptions | VertexEmbeddingOptions,
-): void {
-  test(`should create an embedding (${backend})`, async () => {
-    const result = await getEmbedding("What is the capital of France?", {
-      ...googleOptions,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  test(`should create an embedding with verbose option (${backend})`, async () => {
-    const result = await getEmbedding("What is the capital of France?", {
-      ...googleOptions,
-      verbose: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  test(`should create an embedding with verbose option and cache (${backend})`, async () => {
-    const result = await getEmbedding("What is the capital of France?", {
-      ...googleOptions,
-      verbose: true,
-      cache: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
-  });
-  test(`should retrieve an embedding from cache (${backend})`, async () => {
-    const result = await getEmbedding("What is the capital of France?", {
-      ...googleOptions,
-      verbose: true,
-      cache: true,
-    });
-    console.log(result);
-
-    // Just making sure it doesn't crash for now.
-    assertEquals(true, true);
+for (const provider of providers) {
+  test(`${provider} embeds and caches through the shared interface`, async () => {
+    const mock = embeddingTransport(provider);
+    const options = { provider, model: "embedding-test", apiKey: "test-secret", fetch: mock.fetch };
+    expect(await getEmbedding("local reporting", options)).toEqual([1, 2]);
+    expect(await getEmbedding("local reporting", options)).toEqual([1, 2]);
+    expect(mock.requests).toHaveLength(1);
+    expect(await getEmbedding("local reporting", { ...options, cache: false })).toEqual([1, 2]);
+    expect(mock.requests).toHaveLength(2);
+    const record = readdirSync(".journalism-cache")[0];
+    if (!record) throw new Error("Missing cache record");
+    expect(readFileSync(`.journalism-cache/${record}`, "utf8")).not.toContain("test-secret");
   });
 }
 
-describe.skipIf(process.env.CI === "true" || !hasEmbeddingModel || !hasGeminiApiCredentials)(
-  "live Gemini embeddings",
-  () => {
-    registerGoogleIntegrationTests("Gemini API", { provider: "gemini" });
-  },
-);
-describe.skipIf(process.env.CI === "true" || !hasEmbeddingModel || !hasVertexCredentials)(
-  "live Vertex embeddings",
-  () => {
-    registerGoogleIntegrationTests("Vertex AI", {
-      provider: "gemini",
-      vertex: true,
+test("embedding configuration overrides generation provider and uses the common key", async () => {
+  vi.stubEnv("AI_PROVIDER", "anthropic");
+  vi.stubEnv("AI_EMBEDDINGS_PROVIDER", "openai");
+  vi.stubEnv("AI_KEY", "common-key");
+  vi.stubEnv("AI_EMBEDDINGS_MODEL", "embedding-test");
+  const mock = embeddingTransport("openai");
+  expect(await getEmbedding("text", { fetch: mock.fetch })).toEqual([1, 2]);
+  expect(mock.requests[0]?.headers.get("authorization")).toBe("Bearer common-key");
+});
+
+test("Anthropic, missing provider/model and legacy selection are rejected", async () => {
+  vi.stubEnv("AI_PROVIDER", "anthropic");
+  await expect(getEmbedding("text", { model: "test" })).rejects.toThrow("no native embedding");
+  vi.stubEnv("AI_PROVIDER", undefined);
+  vi.stubEnv("OLLAMA", "true");
+  await expect(getEmbedding("text", { model: "test" })).rejects.toThrow("AI_PROVIDER");
+  await expect(getEmbedding("text", { provider: "ollama" })).rejects.toThrow("AI_EMBEDDINGS_MODEL");
+});
+
+for (const provider of ["openai", "gemini", "google-agent-platform"] satisfies Provider[]) {
+  test(`${provider} forwards dimensions and validates the returned vector length`, async () => {
+    const mock = embeddingTransport(provider, [1, 2, 3]);
+    const options = {
+      provider,
+      model: "embedding-test",
+      apiKey: "key",
+      dimensions: 3,
+      fetch: mock.fetch,
+    };
+    expect(await getEmbedding("text", options)).toEqual([1, 2, 3]);
+    expect(JSON.stringify(mock.requests[0]?.body)).toContain(
+      provider === "openai" ? '"dimensions":3' : '"outputDimensionality":3',
+    );
+    await expect(
+      getEmbedding("wrong size", { ...options, fetch: embeddingTransport(provider, [1]).fetch }),
+    ).rejects.toThrow();
+  });
+}
+
+test("Ollama forwards its context window and ignores keys", async () => {
+  vi.stubEnv("AI_KEY", "irrelevant");
+  const mock = embeddingTransport("ollama");
+  await getEmbedding("text", {
+    provider: "ollama",
+    model: "test",
+    contextWindow: 8192,
+    fetch: mock.fetch,
+  });
+  expect(mock.requests[0]?.body).toMatchObject({
+    model: "test",
+    input: ["text"],
+    options: { num_ctx: 8192 },
+  });
+  await expect(
+    getEmbedding("text", { provider: "ollama", model: "test", dimensions: 3 }),
+  ).rejects.toThrow("dimensions");
+  await expect(
+    getEmbedding("text", { provider: "gemini", model: "test", contextWindow: 8192 }),
+  ).rejects.toThrow("Ollama");
+});
+
+for (const vector of [[], [null], [1, "bad"]]) {
+  test(`malformed vectors cannot be cached: ${JSON.stringify(vector)}`, async () => {
+    const mock = embeddingTransport("ollama", vector);
+    await expect(
+      getEmbedding("text", { provider: "ollama", model: "test", fetch: mock.fetch }),
+    ).rejects.toThrow();
+    expect(readdirSync(".journalism-cache")).toEqual([]);
+  });
+}
+
+const selected = process.env.AI_EMBEDDINGS_PROVIDER ?? process.env.AI_PROVIDER;
+const model = process.env.AI_EMBEDDINGS_MODEL;
+const key = process.env.AI_KEY;
+const project = process.env.AI_PROJECT;
+const location = process.env.AI_LOCATION;
+const host = process.env.OLLAMA_HOST;
+for (const provider of providers) {
+  const configured =
+    selected === provider &&
+    Boolean(model) &&
+    (provider === "ollama" ||
+      Boolean(key) ||
+      (provider === "google-agent-platform" && Boolean(project)));
+  test.skipIf(process.env.CI === "true" || !configured)(`live ${provider} embedding`, async () => {
+    const result = await getEmbedding("Local reporting matters.", {
+      provider,
+      model,
+      apiKey: key,
+      ...(provider === "google-agent-platform" ? { project, location } : {}),
+      ...(provider === "ollama" ? { baseURL: host } : {}),
+      cache: false,
     });
-  },
-);
-
-describe.skipIf(process.env.CI === "true" || !hasEmbeddingModel || !hasOllama)(
-  "live Ollama embeddings",
-  () => {
-    test("should create an embedding (ollama)", async () => {
-      const result = await getEmbedding("What is the capital of France?", {
-        provider: "ollama",
-      });
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should create without a specific context window", async () => {
-      const result = await getEmbedding(
-        "This website is a free, open-source online course on data analysis and visualization using TypeScript. It’s available in English and French. I assume you know nothing about data or code, and I guide you step by step until you’re ready to take off on your own.",
-        { provider: "ollama" },
-      );
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should create with a specific context window", async () => {
-      const result = await getEmbedding(
-        "This website is a free, open-source online course on data analysis and visualization using TypeScript. It’s available in English and French. I assume you know nothing about data or code, and I guide you step by step until you’re ready to take off on your own.",
-        { provider: "ollama", contextWindow: 32000 },
-      );
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should create an embedding with a different Ollama instance (ollama)", async () => {
-      const ollama = new Ollama({ host: "http://127.0.0.1:11434" });
-
-      const result = await getEmbedding("What is the capital of France?", {
-        provider: "ollama",
-        ollama,
-      });
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should create an embedding with verbose option (ollama)", async () => {
-      const result = await getEmbedding("What is the capital of France?", {
-        provider: "ollama",
-        verbose: true,
-      });
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should create an embedding with verbose option and cache (ollama)", async () => {
-      const result = await getEmbedding("What is the capital of France?", {
-        provider: "ollama",
-        verbose: true,
-        cache: true,
-      });
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-    test("should retrieve an embedding from cache (ollama)", async () => {
-      const result = await getEmbedding("What is the capital of France?", {
-        provider: "ollama",
-        verbose: true,
-        cache: true,
-      });
-      console.log(result);
-
-      // Just making sure it doesn't crash for now.
-      assertEquals(true, true);
-    });
-  },
-);
-
-const canUseEnvironmentProvider =
-  hasEmbeddingModel && (environmentProvider === "ollama" ? hasOllama : hasGoogleCredentials);
-describe.skipIf(process.env.CI === "true" || !canUseEnvironmentProvider)(
-  "live environment embeddings",
-  () => {
-    test("should select the embedding provider from environment variables", async () => {
-      const result = await getEmbedding("What is the capital of France?");
-      assertEquals(Array.isArray(result), true);
-      assertEquals(typeof result[0], "number");
-    });
-  },
-);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every(Number.isFinite)).toBe(true);
+  });
+}

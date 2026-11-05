@@ -7,8 +7,6 @@
 ## AI
 
 - [askAI](functions/askAI.md)
-- [askGemini](functions/askGemini.md)
-- [askGeminiPool](functions/askGeminiPool.md)
-- [askOllama](functions/askOllama.md)
+- [askAIPool](functions/askAIPool.md)
 - [getEmbedding](functions/getEmbedding.md)
 - [getEmbeddingIdentity](functions/getEmbeddingIdentity.md)

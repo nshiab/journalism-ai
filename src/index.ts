@@ -1,8 +1,6 @@
-import askGemini from "./ai/askGemini.ts";
 import askAI from "./ai/askAI.ts";
-import askGeminiPool from "./ai/askGeminiPool.ts";
-import askOllama from "./ai/askOllama.ts";
+import askAIPool from "./ai/askAIPool.ts";
 import getEmbedding from "./ai/getEmbedding.ts";
-import { getEmbeddingIdentity } from "./ai/embeddingOptions.ts";
+import getEmbeddingIdentity from "./ai/getEmbeddingIdentity.ts";
 
-export { askAI, askGemini, askGeminiPool, askOllama, getEmbedding, getEmbeddingIdentity };
+export { askAI, askAIPool, getEmbedding, getEmbeddingIdentity };

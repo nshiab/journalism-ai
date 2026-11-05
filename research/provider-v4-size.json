@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-05",
+  "runtimePackages": 42,
+  "directDependencies": 8,
+  "installedBytes": 40797065,
+  "installedMiB": 38.90711307525635,
+  "legacyGoogleSDK": false,
+  "packageArchive": {
+    "bytes": 47714,
+    "unpackedBytes": 199606,
+    "files": 25
+  },
+  "method": "npm ci --omit=dev --ignore-scripts; sum logical file lengths, excluding symlinks"
+}

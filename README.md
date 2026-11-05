@@ -19,80 +19,90 @@ journalist and senior data producer for [CBC News](https://www.cbc.ca/news).
 npm install @nshiab/journalism-ai
 ```
 
+Configure your environment:
+
+```sh
+AI_PROVIDER=gemini
+AI_KEY=your-key
+AI_MODEL=your-model
+```
+
 ```ts
 import { askAI } from "@nshiab/journalism-ai";
 
-// Set OPENAI_API_KEY and AI_MODEL in your environment first.
-const result = await askAI("What is the capital of France?", {
-  provider: "openai",
-});
+const result = await askAI("What is the capital of France?");
 console.log(result.response);
 ```
 
-## AI providers
+`AI_PROVIDER` is required. Choose `openai`, `anthropic`, `gemini`,
+`google-agent-platform`, or `ollama`. All cloud API keys use `AI_KEY`; Ollama
+ignores it and connects locally (or to `OLLAMA_HOST`). Google Agent Platform,
+formerly Vertex AI, also supports application credentials with `AI_PROJECT` and
+optional `AI_LOCATION`. Built-in adapters connect directly to the providers;
+no Vercel account or gateway is required.
 
-`askAI(prompt, options)` uses a shared generation, validation and caching pipeline.
-Select a provider explicitly or set `AI_PROVIDER`:
-
-| `provider`  | Credentials                                                                                        | Model environment variable |
-| ----------- | -------------------------------------------------------------------------------------------------- | -------------------------- |
-| `openai`    | `OPENAI_API_KEY`                                                                                   | `OPENAI_MODEL`             |
-| `anthropic` | `ANTHROPIC_API_KEY`                                                                                | `ANTHROPIC_MODEL`          |
-| `gemini`    | `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_API_KEY`, or legacy `AI_KEY`                               | `GEMINI_MODEL`             |
-| `vertex`    | Google Application Default Credentials with `AI_PROJECT`/`AI_LOCATION`, or `GOOGLE_VERTEX_API_KEY` | `VERTEX_MODEL`             |
-| `ollama`    | Local Ollama; optional `OLLAMA_HOST`                                                               | `OLLAMA_MODEL`             |
-
-All providers also accept an explicit `model`, falling back to `AI_MODEL` after
-the provider-specific environment variable. Vertex is Google's Gemini Enterprise
-Agent Platform backend; `provider: "gemini", vertex: true` also selects it.
-Explicit selection takes precedence over `AI_PROVIDER`. If neither is set,
-legacy Google project or Ollama configuration is used, otherwise Gemini.
-Provider credentials are kept separate: OpenAI and Anthropic do not reuse
-Google's `AI_KEY`. Built-in cloud adapters connect directly to the providers;
-no Vercel account or AI Gateway is required.
+## Structured output and files
 
 ```ts
 import { askAI } from "@nshiab/journalism-ai";
 import { z } from "zod";
 
-// Set ANTHROPIC_API_KEY and ANTHROPIC_MODEL first.
-const result = await askAI("List three European countries.", {
-  provider: "anthropic",
+const result = await askAI("List the people mentioned in this article.", {
+  files: [{ path: "article.txt", type: "text" }],
   schemaJson: z.toJSONSchema(z.array(z.string())),
   processResponse: (value) => z.array(z.string()).parse(value),
 });
 console.log(result.response.join(", "));
 ```
 
-Responses are cached by default in `.journalism-cache`. Add that directory to your
-`.gitignore`. Cache identity separates providers, deployments, models, settings
-and local file contents. `processResponse` reruns on cache hits, and its output
-is never cached. Set `cache: false` to disable caching. Sampling is left to the
-model unless `temperature` is supplied; retries default to zero and can be enabled
-with `maxRetries`. Responses include token usage, timing, reasoning when available,
-provider warnings and web-search sources. Estimated cost is currently `null`.
+Text and images work with supporting models; cloud models also accept PDFs.
+Audio/video require Google, and `gs://` URLs require Google Agent Platform.
+Responses include token usage, timing, reasoning when available, warnings and
+web-search sources. Use `webSearch: true` for provider-native search.
 
-Use `files: [{ path, type }]` for text, images and PDFs when supported by the model.
-Audio/video inputs require Gemini or Vertex; `gs://` URLs require Vertex. Use
-`mediaType` when a local file's extension does not identify its media type. For
-mutable GCS objects, disable caching or change `cacheKey` when the object changes.
-Provider-specific controls go in namespaced `providerOptions`. For example,
-`providerOptions: { ollama: { contextWindow: 8192, thinkingLevel: "low" } }`.
+Responses are cached in `.journalism-cache` by default; add it to `.gitignore`.
+`processResponse` runs on every call, including cache hits, and its output is
+never cached. Use `cache: false` to disable caching. Retries default to zero.
 
-For additional providers, install their compatible Vercel AI SDK adapter and pass
-its model object as `model`, without `provider`. Configure credentials on that
-adapter. Model objects must implement the v4 language-model specification used by
-AI SDK 7. Provide a non-secret deployment/configuration `cacheKey`, or disable caching, so
-different deployments cannot share responses accidentally. See the `askAI`
-reference for an example.
+## Concurrent requests
 
-The existing `askGemini`, `askGeminiPool`, `askOllama`, and embedding functions
-retain their current interfaces. They continue to use their native SDKs for
-compatibility, including native parameter passthrough. This additive integration
-retains the old Google SDK; the smaller fully migrated dependency configuration
-in the research notes requires a separate compatibility migration. Simple Data
-Analysis also needs an integration update before its own provider options can
-select the new cloud providers.
+```ts
+import { askAIPool } from "@nshiab/journalism-ai";
+
+const { results, errors } = await askAIPool(
+  [
+    { id: "france", prompt: "What is the capital of France?" },
+    { id: "germany", prompt: "What is the capital of Germany?" },
+  ],
+  5,
+  { retry: 2 },
+);
+
+for (const entry of results) console.log(entry.request.id, entry.result.response);
+console.log(`${errors.length} failed`);
+```
+
+Each request accepts `options` like `askAI`. The pool handles concurrency,
+retries and optional pacing through `minRequestDurationMs`. Results and errors
+are returned in input order.
+
+## Embeddings
+
+```ts
+import { getEmbedding } from "@nshiab/journalism-ai";
+
+// Set AI_EMBEDDINGS_MODEL first.
+const vector = await getEmbedding("Local reporting matters.");
+console.log(vector.length);
+```
+
+Embeddings use `AI_PROVIDER`, or `AI_EMBEDDINGS_PROVIDER` when a different service
+is needed. OpenAI, Gemini, Google Agent Platform and Ollama are supported;
+Anthropic has no native embedding model. Vectors are cached by provider, model
+and settings. `getEmbeddingIdentity` identifies compatible persisted vectors.
+
+See the [v4 migration guide](https://github.com/nshiab/journalism-ai/blob/main/MIGRATION.md)
+for changes from the provider-specific functions.
 
 ## Starting a data project
 
