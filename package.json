@@ -39,7 +39,12 @@
     "major": "npm version major"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.96",
+    "@ai-sdk/google": "^4.0.111",
+    "@ai-sdk/google-vertex": "^5.0.131",
+    "@ai-sdk/openai": "^4.0.108",
     "@google/genai": "^2.28.0",
+    "ai": "^7.0.162",
     "ollama": "^0.6.4",
     "zod": "^4.6.5"
   },

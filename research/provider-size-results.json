@@ -1,0 +1,1511 @@
+{
+  "date": "2026-11-04T21:34:18.849Z",
+  "node": "v24.22.1",
+  "npm": "11.19.1",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "esbuild": "0.28.2",
+  "scenarios": {
+    "baseline": {
+      "directDependencies": 3,
+      "installedPackages": 44,
+      "installedBytes": 35987322,
+      "dependencies": {
+        "@google/genai": "2.30.0",
+        "ollama": "0.6.4",
+        "zod": "4.6.7"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@google/genai",
+          "version": "2.30.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/aspromise",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/base64",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/codegen",
+          "version": "2.0.5"
+        },
+        {
+          "path": "node_modules/@protobufjs/eventemitter",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/fetch",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/float",
+          "version": "1.0.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/path",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/pool",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/utf8",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@types/node",
+          "version": "24.19.2"
+        },
+        {
+          "path": "node_modules/@types/retry",
+          "version": "0.12.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/gaxios",
+          "version": "7.3.1"
+        },
+        {
+          "path": "node_modules/gcp-metadata",
+          "version": "8.1.2"
+        },
+        {
+          "path": "node_modules/google-auth-library",
+          "version": "10.9.1"
+        },
+        {
+          "path": "node_modules/google-logging-utils",
+          "version": "1.1.3"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/long",
+          "version": "5.3.2"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama",
+          "version": "0.6.4"
+        },
+        {
+          "path": "node_modules/p-retry",
+          "version": "4.6.2"
+        },
+        {
+          "path": "node_modules/protobufjs",
+          "version": "7.6.6"
+        },
+        {
+          "path": "node_modules/retry",
+          "version": "0.13.1"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/undici-types",
+          "version": "7.24.6"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/whatwg-fetch",
+          "version": "3.6.20"
+        },
+        {
+          "path": "node_modules/ws",
+          "version": "8.22.0"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {
+        "full": {
+          "bytes": 1229005,
+          "gzipBytes": 277693,
+          "inputFiles": 222
+        }
+      },
+      "tarballDownloadBytes": 6269820
+    },
+    "official": {
+      "directDependencies": 5,
+      "installedPackages": 53,
+      "installedBytes": 78429686,
+      "dependencies": {
+        "@google/genai": "2.30.0",
+        "ollama": "0.6.4",
+        "zod": "4.6.7",
+        "openai": "7.50.0",
+        "@anthropic-ai/sdk": "1.5.0"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@anthropic-ai/sdk",
+          "version": "1.5.0"
+        },
+        {
+          "path": "node_modules/@babel/runtime",
+          "version": "7.29.10"
+        },
+        {
+          "path": "node_modules/@google/genai",
+          "version": "2.30.0"
+        },
+        {
+          "path": "node_modules/@opentelemetry/api",
+          "version": "1.10.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/aspromise",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/base64",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/codegen",
+          "version": "2.0.5"
+        },
+        {
+          "path": "node_modules/@protobufjs/eventemitter",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/fetch",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/float",
+          "version": "1.0.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/path",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/pool",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/utf8",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@stablelib/base64",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/@types/node",
+          "version": "24.19.2"
+        },
+        {
+          "path": "node_modules/@types/retry",
+          "version": "0.12.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fast-sha256",
+          "version": "1.3.0"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/gaxios",
+          "version": "7.3.1"
+        },
+        {
+          "path": "node_modules/gcp-metadata",
+          "version": "8.1.2"
+        },
+        {
+          "path": "node_modules/google-auth-library",
+          "version": "10.9.1"
+        },
+        {
+          "path": "node_modules/google-logging-utils",
+          "version": "1.1.3"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/json-schema-to-ts",
+          "version": "3.1.1"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/long",
+          "version": "5.3.2"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama",
+          "version": "0.6.4"
+        },
+        {
+          "path": "node_modules/openai",
+          "version": "7.50.0"
+        },
+        {
+          "path": "node_modules/p-retry",
+          "version": "4.6.2"
+        },
+        {
+          "path": "node_modules/protobufjs",
+          "version": "7.6.6"
+        },
+        {
+          "path": "node_modules/retry",
+          "version": "0.13.1"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/standardwebhooks",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/ts-algebra",
+          "version": "2.0.0"
+        },
+        {
+          "path": "node_modules/undici-types",
+          "version": "7.24.6"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/whatwg-fetch",
+          "version": "3.6.20"
+        },
+        {
+          "path": "node_modules/ws",
+          "version": "8.22.0"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {
+        "full": {
+          "bytes": 2044391,
+          "gzipBytes": 462710,
+          "inputFiles": 763
+        },
+        "wrappers": {
+          "bytes": 1263333,
+          "gzipBytes": 276863,
+          "inputFiles": 636
+        }
+      },
+      "tarballDownloadBytes": 13031996
+    },
+    "ai-additive": {
+      "directDependencies": 6,
+      "installedPackages": 56,
+      "installedBytes": 55560508,
+      "dependencies": {
+        "@google/genai": "2.30.0",
+        "ollama": "0.6.4",
+        "zod": "4.6.7",
+        "ai": "7.0.162",
+        "@ai-sdk/openai": "4.0.108",
+        "@ai-sdk/anthropic": "4.0.96"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@ai-sdk/anthropic",
+          "version": "4.0.96"
+        },
+        {
+          "path": "node_modules/@ai-sdk/gateway",
+          "version": "4.0.135"
+        },
+        {
+          "path": "node_modules/@ai-sdk/openai",
+          "version": "4.0.108"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider",
+          "version": "4.0.35"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider-utils",
+          "version": "5.0.74"
+        },
+        {
+          "path": "node_modules/@google/genai",
+          "version": "2.30.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/aspromise",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/base64",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/codegen",
+          "version": "2.0.5"
+        },
+        {
+          "path": "node_modules/@protobufjs/eventemitter",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/fetch",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/float",
+          "version": "1.0.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/path",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/pool",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/utf8",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@standard-schema/spec",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@types/node",
+          "version": "24.19.2"
+        },
+        {
+          "path": "node_modules/@types/retry",
+          "version": "0.12.0"
+        },
+        {
+          "path": "node_modules/@vercel/oidc",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/@workflow/serde",
+          "version": "4.1.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/ai",
+          "version": "7.0.162"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/eventsource-parser",
+          "version": "3.1.1"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/gaxios",
+          "version": "7.3.1"
+        },
+        {
+          "path": "node_modules/gcp-metadata",
+          "version": "8.1.2"
+        },
+        {
+          "path": "node_modules/google-auth-library",
+          "version": "10.9.1"
+        },
+        {
+          "path": "node_modules/google-logging-utils",
+          "version": "1.1.3"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/json-schema",
+          "version": "0.4.0"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/long",
+          "version": "5.3.2"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama",
+          "version": "0.6.4"
+        },
+        {
+          "path": "node_modules/p-retry",
+          "version": "4.6.2"
+        },
+        {
+          "path": "node_modules/protobufjs",
+          "version": "7.6.6"
+        },
+        {
+          "path": "node_modules/retry",
+          "version": "0.13.1"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/undici",
+          "version": "7.30.1"
+        },
+        {
+          "path": "node_modules/undici-types",
+          "version": "7.24.6"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/whatwg-fetch",
+          "version": "3.6.20"
+        },
+        {
+          "path": "node_modules/ws",
+          "version": "8.22.0"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {
+        "full": {
+          "bytes": 1875739,
+          "gzipBytes": 432881,
+          "inputFiles": 246
+        },
+        "wrappers": {
+          "bytes": 1097762,
+          "gzipBytes": 247796,
+          "inputFiles": 119
+        }
+      },
+      "tarballDownloadBytes": 10425474
+    },
+    "ai-migrated-google": {
+      "directDependencies": 7,
+      "installedPackages": 41,
+      "installedBytes": 40765025,
+      "dependencies": {
+        "ai": "7.0.162",
+        "@ai-sdk/openai": "4.0.108",
+        "@ai-sdk/anthropic": "4.0.96",
+        "@ai-sdk/google": "4.0.111",
+        "@ai-sdk/google-vertex": "5.0.131",
+        "ollama": "0.6.4",
+        "zod": "4.6.7"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@ai-sdk/anthropic",
+          "version": "4.0.96"
+        },
+        {
+          "path": "node_modules/@ai-sdk/gateway",
+          "version": "4.0.135"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google",
+          "version": "4.0.111"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex",
+          "version": "5.0.131"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/gaxios",
+          "version": "8.3.2"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/gcp-metadata",
+          "version": "9.2.3"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/google-auth-library",
+          "version": "11.3.3"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/google-logging-utils",
+          "version": "2.1.1"
+        },
+        {
+          "path": "node_modules/@ai-sdk/openai",
+          "version": "4.0.108"
+        },
+        {
+          "path": "node_modules/@ai-sdk/openai-compatible",
+          "version": "3.0.84"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider",
+          "version": "4.0.35"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider-utils",
+          "version": "5.0.74"
+        },
+        {
+          "path": "node_modules/@standard-schema/spec",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@vercel/oidc",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/@workflow/serde",
+          "version": "4.1.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/ai",
+          "version": "7.0.162"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/eventsource-parser",
+          "version": "3.1.1"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/json-schema",
+          "version": "0.4.0"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama",
+          "version": "0.6.4"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/undici",
+          "version": "7.30.1"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/whatwg-fetch",
+          "version": "3.6.20"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {},
+      "tarballDownloadBytes": 8209932
+    },
+    "ai-fully-migrated": {
+      "directDependencies": 7,
+      "installedPackages": 40,
+      "installedBytes": 40925501,
+      "dependencies": {
+        "ai": "7.0.162",
+        "@ai-sdk/openai": "4.0.108",
+        "@ai-sdk/anthropic": "4.0.96",
+        "@ai-sdk/google": "4.0.111",
+        "@ai-sdk/google-vertex": "5.0.131",
+        "ollama-ai-provider-v2": "4.1.0",
+        "zod": "4.6.7"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@ai-sdk/anthropic",
+          "version": "4.0.96"
+        },
+        {
+          "path": "node_modules/@ai-sdk/gateway",
+          "version": "4.0.135"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google",
+          "version": "4.0.111"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex",
+          "version": "5.0.131"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/gaxios",
+          "version": "8.3.2"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/gcp-metadata",
+          "version": "9.2.3"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/google-auth-library",
+          "version": "11.3.3"
+        },
+        {
+          "path": "node_modules/@ai-sdk/google-vertex/node_modules/google-logging-utils",
+          "version": "2.1.1"
+        },
+        {
+          "path": "node_modules/@ai-sdk/openai",
+          "version": "4.0.108"
+        },
+        {
+          "path": "node_modules/@ai-sdk/openai-compatible",
+          "version": "3.0.84"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider",
+          "version": "4.0.35"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider-utils",
+          "version": "5.0.74"
+        },
+        {
+          "path": "node_modules/@standard-schema/spec",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@vercel/oidc",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/@workflow/serde",
+          "version": "4.1.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/ai",
+          "version": "7.0.162"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/eventsource-parser",
+          "version": "3.1.1"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/json-schema",
+          "version": "0.4.0"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama-ai-provider-v2",
+          "version": "4.1.0"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/undici",
+          "version": "7.30.1"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {},
+      "tarballDownloadBytes": 8239793
+    },
+    "ai-gateway": {
+      "directDependencies": 4,
+      "installedPackages": 54,
+      "installedBytes": 49684966,
+      "dependencies": {
+        "@google/genai": "2.30.0",
+        "ollama": "0.6.4",
+        "zod": "4.6.7",
+        "ai": "7.0.162"
+      },
+      "installed": [
+        {
+          "path": "node_modules/@ai-sdk/gateway",
+          "version": "4.0.135"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider",
+          "version": "4.0.35"
+        },
+        {
+          "path": "node_modules/@ai-sdk/provider-utils",
+          "version": "5.0.74"
+        },
+        {
+          "path": "node_modules/@google/genai",
+          "version": "2.30.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/aspromise",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/base64",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/codegen",
+          "version": "2.0.5"
+        },
+        {
+          "path": "node_modules/@protobufjs/eventemitter",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/fetch",
+          "version": "1.1.1"
+        },
+        {
+          "path": "node_modules/@protobufjs/float",
+          "version": "1.0.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/path",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@protobufjs/pool",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@protobufjs/utf8",
+          "version": "1.1.2"
+        },
+        {
+          "path": "node_modules/@standard-schema/spec",
+          "version": "1.1.0"
+        },
+        {
+          "path": "node_modules/@types/node",
+          "version": "24.19.2"
+        },
+        {
+          "path": "node_modules/@types/retry",
+          "version": "0.12.0"
+        },
+        {
+          "path": "node_modules/@vercel/oidc",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/@workflow/serde",
+          "version": "4.1.0"
+        },
+        {
+          "path": "node_modules/agent-base",
+          "version": "7.1.4"
+        },
+        {
+          "path": "node_modules/ai",
+          "version": "7.0.162"
+        },
+        {
+          "path": "node_modules/base64-js",
+          "version": "1.5.1"
+        },
+        {
+          "path": "node_modules/bignumber.js",
+          "version": "9.3.1"
+        },
+        {
+          "path": "node_modules/buffer-equal-constant-time",
+          "version": "1.0.1"
+        },
+        {
+          "path": "node_modules/data-uri-to-buffer",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/debug",
+          "version": "4.4.3"
+        },
+        {
+          "path": "node_modules/ecdsa-sig-formatter",
+          "version": "1.0.11"
+        },
+        {
+          "path": "node_modules/eventsource-parser",
+          "version": "3.1.1"
+        },
+        {
+          "path": "node_modules/extend",
+          "version": "3.0.2"
+        },
+        {
+          "path": "node_modules/fetch-blob",
+          "version": "3.2.0"
+        },
+        {
+          "path": "node_modules/formdata-polyfill",
+          "version": "4.0.10"
+        },
+        {
+          "path": "node_modules/gaxios",
+          "version": "7.3.1"
+        },
+        {
+          "path": "node_modules/gcp-metadata",
+          "version": "8.1.2"
+        },
+        {
+          "path": "node_modules/google-auth-library",
+          "version": "10.9.1"
+        },
+        {
+          "path": "node_modules/google-logging-utils",
+          "version": "1.1.3"
+        },
+        {
+          "path": "node_modules/https-proxy-agent",
+          "version": "7.0.6"
+        },
+        {
+          "path": "node_modules/json-bigint",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/json-schema",
+          "version": "0.4.0"
+        },
+        {
+          "path": "node_modules/jwa",
+          "version": "2.0.1"
+        },
+        {
+          "path": "node_modules/jws",
+          "version": "4.0.1"
+        },
+        {
+          "path": "node_modules/long",
+          "version": "5.3.2"
+        },
+        {
+          "path": "node_modules/ms",
+          "version": "2.1.3"
+        },
+        {
+          "path": "node_modules/node-domexception",
+          "version": "1.0.0"
+        },
+        {
+          "path": "node_modules/node-fetch",
+          "version": "3.3.2"
+        },
+        {
+          "path": "node_modules/ollama",
+          "version": "0.6.4"
+        },
+        {
+          "path": "node_modules/p-retry",
+          "version": "4.6.2"
+        },
+        {
+          "path": "node_modules/protobufjs",
+          "version": "7.6.6"
+        },
+        {
+          "path": "node_modules/retry",
+          "version": "0.13.1"
+        },
+        {
+          "path": "node_modules/safe-buffer",
+          "version": "5.2.1"
+        },
+        {
+          "path": "node_modules/undici",
+          "version": "7.30.1"
+        },
+        {
+          "path": "node_modules/undici-types",
+          "version": "7.24.6"
+        },
+        {
+          "path": "node_modules/web-streams-polyfill",
+          "version": "3.3.3"
+        },
+        {
+          "path": "node_modules/whatwg-fetch",
+          "version": "3.6.20"
+        },
+        {
+          "path": "node_modules/ws",
+          "version": "8.22.0"
+        },
+        {
+          "path": "node_modules/zod",
+          "version": "4.6.7"
+        }
+      ],
+      "bundles": {},
+      "tarballDownloadBytes": 9288160
+    }
+  },
+  "smokeTests": [
+    {
+      "route": "official",
+      "provider": "OpenAI",
+      "structured": false,
+      "requests": 1,
+      "result": "Paris"
+    },
+    {
+      "route": "official",
+      "provider": "OpenAI",
+      "structured": true,
+      "requests": 1,
+      "result": {
+        "answer": "Paris"
+      }
+    },
+    {
+      "route": "official",
+      "provider": "Anthropic",
+      "structured": false,
+      "requests": 1,
+      "result": "Paris"
+    },
+    {
+      "route": "official",
+      "provider": "Anthropic",
+      "structured": true,
+      "requests": 1,
+      "result": {
+        "answer": "Paris"
+      }
+    },
+    {
+      "route": "ai-additive",
+      "provider": "OpenAI",
+      "structured": false,
+      "requests": 1,
+      "result": "Paris"
+    },
+    {
+      "route": "ai-additive",
+      "provider": "OpenAI",
+      "structured": true,
+      "requests": 1,
+      "result": {
+        "answer": "Paris"
+      }
+    },
+    {
+      "route": "ai-additive",
+      "provider": "Anthropic",
+      "structured": false,
+      "requests": 1,
+      "result": "Paris"
+    },
+    {
+      "route": "ai-additive",
+      "provider": "Anthropic",
+      "structured": true,
+      "requests": 1,
+      "result": {
+        "answer": "Paris"
+      }
+    }
+  ],
+  "packageBreakdowns": {
+    "OpenAI": {
+      "other": 536978,
+      "type declarations": 7272027,
+      "source maps": 6035148,
+      "JavaScript": 4677915,
+      "TypeScript source": 5385707
+    },
+    "Anthropic": {
+      "other": 302158,
+      "type declarations": 5857467,
+      "source maps": 3816821,
+      "JavaScript": 3555223,
+      "TypeScript source": 3819082
+    },
+    "AI Core": {
+      "other": 3056386,
+      "type declarations": 626483,
+      "source maps": 2251956,
+      "JavaScript": 926605,
+      "TypeScript source": 1642186
+    },
+    "AI OpenAI": {
+      "other": 331693,
+      "type declarations": 154731,
+      "source maps": 1569165,
+      "JavaScript": 676610,
+      "TypeScript source": 635307
+    },
+    "AI Anthropic": {
+      "other": 200428,
+      "type declarations": 134960,
+      "source maps": 1192722,
+      "JavaScript": 503626,
+      "TypeScript source": 475208
+    }
+  },
+  "method": {
+    "productionOnly": true,
+    "installScripts": false,
+    "liveProviderRequests": false,
+    "baseline": "journalism-ai 3.0.7 lockfile; root dependencies pinned to installed versions",
+    "bundle": {
+      "platform": "node",
+      "target": "node24",
+      "format": "esm",
+      "bundle": true,
+      "minify": true,
+      "gzipLevel": 9
+    },
+    "download": "Sum compressed tarball lengths per unique resolved archive, not npm metadata or cache overhead",
+    "installed": "Sum logical file lengths in node_modules, not filesystem allocation or process memory",
+    "sda": "Temporary manifest-only journalism-ai fixture substituted into copies of SDA 6.0.15 lockfile; package-lock-only resolution"
+  },
+  "sda": {
+    "baseline": {
+      "productionLockfileEntries": 189,
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "official": {
+      "productionLockfileEntries": 198,
+      "added": [
+        ["node_modules/@anthropic-ai/sdk", "1.5.0"],
+        ["node_modules/@babel/runtime", "7.29.10"],
+        ["node_modules/@opentelemetry/api", "1.10.0"],
+        ["node_modules/@stablelib/base64", "1.0.1"],
+        ["node_modules/fast-sha256", "1.3.0"],
+        ["node_modules/json-schema-to-ts", "3.1.1"],
+        ["node_modules/openai", "7.50.0"],
+        ["node_modules/standardwebhooks", "1.1.1"],
+        ["node_modules/ts-algebra", "2.0.0"]
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "ai-additive": {
+      "productionLockfileEntries": 201,
+      "added": [
+        ["node_modules/@ai-sdk/anthropic", "4.0.96"],
+        ["node_modules/@ai-sdk/gateway", "4.0.135"],
+        ["node_modules/@ai-sdk/openai", "4.0.108"],
+        ["node_modules/@ai-sdk/provider", "4.0.35"],
+        ["node_modules/@ai-sdk/provider-utils", "5.0.74"],
+        ["node_modules/@standard-schema/spec", "1.1.0"],
+        ["node_modules/@vercel/oidc", "3.2.0"],
+        ["node_modules/@workflow/serde", "4.1.0"],
+        ["node_modules/ai", "7.0.162"],
+        ["node_modules/eventsource-parser", "3.1.1"],
+        ["node_modules/json-schema", "0.4.0"],
+        ["node_modules/undici", "7.30.1"]
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "ai-migrated-google": {
+      "productionLockfileEntries": 188,
+      "added": [
+        ["node_modules/@ai-sdk/anthropic", "4.0.96"],
+        ["node_modules/@ai-sdk/gateway", "4.0.135"],
+        ["node_modules/@ai-sdk/google", "4.0.111"],
+        ["node_modules/@ai-sdk/google-vertex", "5.0.131"],
+        ["node_modules/@ai-sdk/google-vertex/node_modules/gaxios", "8.3.2"],
+        ["node_modules/@ai-sdk/google-vertex/node_modules/gcp-metadata", "9.2.3"],
+        ["node_modules/@ai-sdk/google-vertex/node_modules/google-auth-library", "11.3.3"],
+        ["node_modules/@ai-sdk/google-vertex/node_modules/google-logging-utils", "2.1.1"],
+        ["node_modules/@ai-sdk/openai", "4.0.108"],
+        ["node_modules/@ai-sdk/openai-compatible", "3.0.84"],
+        ["node_modules/@ai-sdk/provider", "4.0.35"],
+        ["node_modules/@ai-sdk/provider-utils", "5.0.74"],
+        ["node_modules/@standard-schema/spec", "1.1.0"],
+        ["node_modules/@vercel/oidc", "3.2.0"],
+        ["node_modules/@workflow/serde", "4.1.0"],
+        ["node_modules/ai", "7.0.162"],
+        ["node_modules/eventsource-parser", "3.1.1"],
+        ["node_modules/json-schema", "0.4.0"],
+        ["node_modules/undici", "7.30.1"]
+      ],
+      "removed": [
+        ["node_modules/@google/genai", "2.30.0"],
+        ["node_modules/@protobufjs/aspromise", "1.1.2"],
+        ["node_modules/@protobufjs/base64", "1.1.2"],
+        ["node_modules/@protobufjs/codegen", "2.0.5"],
+        ["node_modules/@protobufjs/eventemitter", "1.1.1"],
+        ["node_modules/@protobufjs/fetch", "1.1.1"],
+        ["node_modules/@protobufjs/float", "1.0.2"],
+        ["node_modules/@protobufjs/path", "1.1.2"],
+        ["node_modules/@protobufjs/pool", "1.1.0"],
+        ["node_modules/@protobufjs/utf8", "1.1.2"],
+        ["node_modules/@types/node", "24.19.2"],
+        ["node_modules/@types/retry", "0.12.0"],
+        ["node_modules/gcp-metadata", "8.1.2"],
+        ["node_modules/google-auth-library", "10.9.1"],
+        ["node_modules/google-logging-utils", "1.1.3"],
+        ["node_modules/long", "5.3.2"],
+        ["node_modules/p-retry", "4.6.2"],
+        ["node_modules/protobufjs", "7.6.6"],
+        ["node_modules/undici-types", "7.24.6"],
+        ["node_modules/ws", "8.22.0"]
+      ],
+      "changed": []
+    }
+  },
+  "fixtures": {
+    "official": "\nimport OpenAI from 'openai';\nimport Anthropic from '@anthropic-ai/sdk';\nimport { z } from 'zod';\nconst schema = z.object({ answer: z.string() });\nconst json = z.toJSONSchema(schema);\nexport async function askOpenAI(prompt, { apiKey, model, fetch, structured = false } = {}) {\n  const client = new OpenAI({ apiKey, fetch, maxRetries: 0 });\n  const result = await client.responses.create({ model, input: prompt, ...(structured ? {text: {format: {type:'json_schema',name:'answer',strict:true,schema:json}}} : {}) });\n  if (result.status !== 'completed') throw new Error('Incomplete OpenAI response');\n  return structured ? schema.parse(JSON.parse(result.output_text)) : result.output_text;\n}\nexport async function askAnthropic(prompt, { apiKey, model, fetch, structured = false } = {}) {\n  const client = new Anthropic({ apiKey, fetch, maxRetries: 0 });\n  const result = await client.messages.create({ model, max_tokens: 256, messages: [{role:'user',content:prompt}], ...(structured ? {output_config: {format: {type:'json_schema',schema:json}}} : {}) });\n  if (result.stop_reason !== 'end_turn') throw new Error('Incomplete Anthropic response');\n  const text = result.content.filter(block => block.type === 'text').map(block => block.text).join('');\n  return structured ? schema.parse(JSON.parse(text)) : text;\n}\n",
+    "vercel": "\nimport { generateText, Output } from 'ai';\nimport { createOpenAI } from '@ai-sdk/openai';\nimport { createAnthropic } from '@ai-sdk/anthropic';\nimport { z } from 'zod';\nconst schema = z.object({ answer: z.string() });\nasync function execute(model, prompt, structured) {\n  const result = await generateText({ model, prompt, maxOutputTokens: 256, maxRetries: 0, ...(structured ? {output: Output.object({schema})} : {}) });\n  return structured ? result.output : result.text;\n}\nexport function askOpenAI(prompt, { apiKey, model, fetch, structured = false } = {}) {\n  return execute(createOpenAI({apiKey,fetch})(model), prompt, structured);\n}\nexport function askAnthropic(prompt, { apiKey, model, fetch, structured = false } = {}) {\n  return execute(createAnthropic({apiKey,fetch})(model), prompt, structured);\n}\n"
+  },
+  "currentPackageArchive": [
+    {
+      "name": "@nshiab/journalism-ai",
+      "version": "3.0.7",
+      "size": 59086,
+      "unpackedSize": 255186,
+      "bundled": []
+    }
+  ]
+}

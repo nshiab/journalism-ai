@@ -6,6 +6,7 @@
 
 ## AI
 
+- [askAI](functions/askAI.md)
 - [askGemini](functions/askGemini.md)
 - [askGeminiPool](functions/askGeminiPool.md)
 - [askOllama](functions/askOllama.md)

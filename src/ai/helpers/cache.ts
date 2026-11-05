@@ -42,15 +42,15 @@ export async function readAndProcessCache<TCached extends { response: unknown }>
   decode: (value: unknown) => TCached,
   processResponse?: (response: unknown) => unknown,
 ): Promise<TCached | (Omit<TCached, "response"> & { response: unknown }) | null> {
-  const value = readCache(cacheFile);
-  if (value === null) return null;
   try {
+    const value = readCache(cacheFile);
+    if (value === null) return null;
     const cached = decode(value);
     return processResponse
       ? { ...cached, response: await processResponse(cached.response) }
       : cached;
   } catch (error) {
-    rmSync(cacheFile);
+    rmSync(cacheFile, { force: true });
     throw error;
   }
 }
